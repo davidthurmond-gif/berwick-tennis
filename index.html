@@ -1210,7 +1210,7 @@ function AdminPage({data,setData}){
           </div>
           {err&&<div className="alert alert-error">{err}</div>}
           <button className="btn btn-primary" style={{width:"100%"}} onClick={()=>{if(pw===data.adminPassword)setAuthed(true);else setErr("Incorrect password");}}>Login</button>
-          <div style={{marginTop:10,fontSize:12,color:"var(--gray)",textAlign:"center"}}>Default: tennis2026</div>
+
         </div>
       </div>
     );
