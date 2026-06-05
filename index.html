@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Berwick TC – Men's Night Comp</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+    :root {
+      --navy:        #0d1117;
+      --navy-mid:    #161b22;
+      --navy-light:  #1c2128;
+      --navy-border: #30363d;
+      --green:       #3fb950;
+      --green-dark:  #2ea043;
+      --green-light: #0d2a0d;
+      --green-mid:   #56d364;
+      --white:       #1c2128;
+      --gray:        #8b949e;
+      --gray-light:  #21262d;
+      --gray-border: #30363d;
+      --gold:        #d4a017;
+      --red:         #f85149;
+      --red-light:   #3d1a1a;
+      --blue:        #58a6ff;
+      --blue-light:  #0d2a4a;
+      --shadow:      0 1px 4px rgba(0,0,0,0.4);
+      --shadow-md:   0 4px 16px rgba(0,0,0,0.5);
+      --radius:      10px;
+      --radius-sm:   6px;
+    }
+    .card { background: var(--navy-light); border:1px solid var(--navy-border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; margin-bottom: 12px; }
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--radius-sm); font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all 0.15s; }
+    .btn-primary { background:#238636; color:white; border:1px solid #2ea043; }
+    .btn-primary:hover { background:#2ea043; }
+    .btn-green { background:#238636; color:white; border:1px solid #2ea043; }
+    .btn-green:hover { background:#2ea043; }
+    .btn-secondary { background:var(--gray-light); color:#c9d1d9; border:1px solid var(--gray-border); }
+    .btn-secondary:hover { background:#30363d; }
+    .btn-danger { background:#6e1a1a; color:#f85149; border:1px solid #f85149; }
+    .btn-danger:hover { background:#8b2020; }
+    .btn-sm { padding:5px 10px; font-size:12px; }
+    input, select, textarea { width:100%; padding:8px 12px; border:1px solid var(--gray-border); border-radius:var(--radius-sm); font-size:14px; outline:none; transition:border 0.15s; background:#0d1117; color:#e6edf3; }
+    input:focus, select:focus, textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(63,185,80,0.15); }
+    label { display:block; font-size:13px; font-weight:700; color:#c9d1d9; margin-bottom:4px; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th { text-align:left; padding:8px 10px; background:#0d1117; font-size:11px; font-weight:800; color:#8b949e; text-transform:uppercase; letter-spacing:0.06em; border-bottom:2px solid var(--navy-border); }
+    td { padding:10px 10px; border-bottom:1px solid var(--navy-border); color:#e6edf3; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:#21262d; }
+    .badge { display:inline-flex; align-items:center; padding:2px 8px; border-radius:99px; font-size:11px; font-weight:800; }
+    .badge-green { background:#0d3d0d; color:#3fb950; }
+    .badge-navy { background:#21262d; color:#8b949e; }
+    .badge-gold { background:#2d1e00; color:#d4a017; }
+    .badge-red { background:#3d1a1a; color:#f85149; }
+    .badge-gray { background:#21262d; color:#8b949e; }
+    .badge-blue { background:#0d2a4a; color:#58a6ff; }
+    .tab-bar { display:flex; gap:4px; overflow-x:auto; padding:0 12px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .tab-bar::-webkit-scrollbar { display:none; }
+    .tab { padding:7px 13px; border-radius:var(--radius-sm); font-size:13px; font-weight:700; cursor:pointer; color:#8b949e; white-space:nowrap; border:none; background:transparent; transition:all 0.15s; }
+    .tab.active { background:#161b22; color:#3fb950; border:1px solid #30363d; }
+    .tab:hover:not(.active) { background:#21262d; color:#c9d1d9; }
+    .page { padding:16px; max-width:660px; margin:0 auto; }
+    .finals-row td { background:#0d2a0d !important; }
+    .finals-row:hover td { background:#122e12 !important; }
+    .pos-border-1 td:first-child { border-left:4px solid #d4a017; }
+    .pos-border-2 td:first-child { border-left:4px solid #8b949e; }
+    .pos-border-3 td:first-child { border-left:4px solid #b87333; }
+    .pos-border-4 td:first-child { border-left:4px solid #3fb950; }
+    .score-win { color:#3fb950; font-weight:800; }
+    .score-lose { color:#f85149; font-weight:700; }
+    .result-header { background:#0d2a0d; border:1px solid #2d5a2d; border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:0; }
+    .form-group { margin-bottom:14px; }
+    .alert { padding:10px 14px; border-radius:var(--radius-sm); font-size:13px; font-weight:600; margin-bottom:12px; }
+    .alert-success { background:#0d3d0d; color:#3fb950; border:1px solid #2d5a2d; }
+    .alert-error { background:#3d1a1a; color:#f85149; border:1px solid #6e1a1a; }
+    .alert-info { background:#0d2a4a; color:#58a6ff; border:1px solid #1d4a7a; }
+    .sub-badge { font-size:10px; background:#2d1e00; color:#d4a017; border-radius:4px; padding:1px 5px; font-weight:800; margin-left:4px; }
+    .spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,0.3); border-top-color:white; border-radius:50%; animation:spin 0.6s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .upload-zone { border:2px dashed #30363d; border-radius:var(--radius); padding:28px; text-align:center; cursor:pointer; transition:all 0.15s; background:#0d1117; }
+    .upload-zone:hover { border-color:#3fb950; background:#0d2a0d; }
+    .upload-zone input[type=file] { display:none; }
+    .score-pair { display:grid; grid-template-columns:1fr 80px 1fr; align-items:center; gap:4px; padding:7px 0; border-bottom:1px solid var(--gray-border); }
+    .score-pair:last-child { border-bottom:none; }
+    .combo-lbl { font-size:11px; color:var(--gray); font-weight:800; text-align:center; }
+    .set-score { font-size:20px; font-weight:900; text-align:center; }
+    .player-name { font-size:12px; display:block; line-height:1.3; }
+    .stat-highlight { background:#0d2a0d; border:1px solid #2d5a2d; border-radius:var(--radius); padding:14px; color:#e6edf3; text-align:center; }
+    .stat-highlight .val { font-size:28px; font-weight:900; color:#3fb950; }
+    .stat-highlight .lbl { font-size:11px; color:#8b949e; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; margin-top:2px; }
+    .stat-highlight .name { font-size:14px; font-weight:800; margin-top:4px; color:#e6edf3; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+    .divider { border:none; border-top:1px solid var(--gray-border); margin:12px 0; }
+    h2 { font-size:18px; font-weight:800; color:#e6edf3; margin-bottom:12px; }
+    h3 { font-size:15px; font-weight:800; color:#e6edf3; margin-bottom:8px; }
+    .text-green { color:#3fb950; }
+    .text-red { color:#f85149; }
+    .text-gray { color:#8b949e; font-size:13px; }
+    .text-navy { color:#e6edf3; }
+    @media(max-width:480px){
+      .page { padding:10px; }
+      .grid-3 { grid-template-columns:1fr 1fr; }
+      .score-pair { grid-template-columns:1fr 70px 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const SEED = {
+  season:"Thursday Night Competition – Autumn 2026", adminPassword:"tennis2026", anthropicKey:"",
+  teams:[
+    {id:1,name:"Brights",    players:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"]},
+    {id:2,name:"Bradburys",  players:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"]},
+    {id:3,name:"Camplins",   players:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"]},
+    {id:4,name:"Lassilas",   players:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Andrew Watson"]},
+    {id:5,name:"James'",     players:["Chung Tan","James Southey","Tom Maloney","Brett Kurz"]},
+    {id:6,name:"Anthonys",   players:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"]},
+    {id:7,name:"Begg-Smiths",players:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"]},
+  ],
+  casualSubs:["James Liddell","Paul Smart","John Keecherer","Shannon Watson","Pierre Monet","Ben Holmes","Kim Kerr","Soe Tun","Huss Shafai"],
+  fixtures:[
+    {round:1, date:"2026-02-05",matches:[{t1:1,t2:6},{t1:2,t2:5},{t1:3,t2:4}],bye:7},
+    {round:2, date:"2026-02-12",matches:[{t1:4,t2:2},{t1:5,t2:1},{t1:6,t2:7}],bye:3},
+    {round:3, date:"2026-02-19",matches:[{t1:2,t2:7},{t1:3,t2:6},{t1:4,t2:5}],bye:1},
+    {round:4, date:"2026-02-26",matches:[{t1:5,t2:3},{t1:6,t2:2},{t1:7,t2:1}],bye:4},
+    {round:5, date:"2026-03-05",matches:[{t1:3,t2:1},{t1:4,t2:7},{t1:5,t2:6}],bye:2},
+    {round:6, date:"2026-03-12",matches:[{t1:6,t2:4},{t1:7,t2:3},{t1:1,t2:2}],bye:5},
+    {round:7, date:"2026-03-19",matches:[{t1:7,t2:5},{t1:1,t2:4},{t1:2,t2:3}],bye:6},
+    {round:8, date:"2026-03-26",matches:[{t1:1,t2:6},{t1:2,t2:5},{t1:3,t2:4}],bye:7,note:"Wash out"},
+    {round:9, date:"2026-04-23",matches:[{t1:4,t2:2},{t1:5,t2:1},{t1:6,t2:7}],bye:3},
+    {round:10,date:"2026-04-30",matches:[{t1:2,t2:7},{t1:3,t2:6},{t1:4,t2:5}],bye:1},
+    {round:11,date:"2026-05-07",matches:[{t1:5,t2:3},{t1:6,t2:2},{t1:7,t2:1}],bye:4,note:"Wash out"},
+    {round:12,date:"2026-05-14",matches:[{t1:3,t2:1},{t1:4,t2:7},{t1:5,t2:6}],bye:2},
+    {round:13,date:"2026-05-21",matches:[{t1:6,t2:4},{t1:7,t2:3},{t1:1,t2:2}],bye:5},
+    {round:14,date:"2026-05-28",matches:[{t1:7,t2:5},{t1:1,t2:4},{t1:2,t2:3}],bye:6},
+  ],
+  results:[
+    {round:1,matches:[
+      {team1:1,team2:6,
+       roster1:["Cooper Khalil","James Liddell","David Sutton","Chris Maniatakis"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Nick Teo","Mark Findlay"],
+       sets:[{c:"1+2",g1:6,g2:2},{c:"3+4",g1:6,g2:0},{c:"1+3",g1:0,g2:6},{c:"2+4",g1:6,g2:3},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:6,g2:3}],
+       total1:30,total2:17,pts1:7,pts2:1},
+      {team1:2,team2:5,
+       roster1:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       roster2:["Chung Tan","Justin Hermann","Tom Maloney","Brett Kurz"],
+       sets:[{c:"1+2",g1:6,g2:5},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:2,g2:6},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:5,g2:6}],
+       total1:28,total2:28,pts1:4,pts2:4},
+      {team1:3,team2:4,
+       roster1:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       roster2:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:6,g2:3},{c:"1+4",g1:6,g2:2},{c:"2+3",g1:3,g2:6}],
+       total1:32,total2:24,pts1:6,pts2:2},
+    ]},
+    {round:2,matches:[
+      {team1:4,team2:2,
+       roster1:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       roster2:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       sets:[{c:"1+2",g1:5,g2:6},{c:"3+4",g1:6,g2:4},{c:"1+3",g1:6,g2:5},{c:"2+4",g1:5,g2:6},{c:"1+4",g1:6,g2:5},{c:"2+3",g1:6,g2:5}],
+       total1:34,total2:31,pts1:6,pts2:2},
+      {team1:5,team2:1,
+       roster1:["Chung Tan","David Ng","Cameron Rush","Brett Kurz"],
+       roster2:["Cooper Khalil","Simran Chawla","David Sutton","Paul Smart"],
+       sets:[{c:"1+2",g1:4,g2:6},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:5},{c:"2+4",g1:6,g2:4},{c:"1+4",g1:6,g2:5},{c:"2+3",g1:6,g2:0}],
+       total1:33,total2:26,pts1:6,pts2:2},
+      {team1:6,team2:7,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Alan Chumacero"],
+       roster2:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"],
+       sets:[{c:"1+2",g1:1,g2:6},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:3,g2:6},{c:"1+4",g1:6,g2:1},{c:"2+3",g1:3,g2:6}],
+       total1:24,total2:29,pts1:2,pts2:6},
+    ]},
+    {round:3,matches:[
+      {team1:2,team2:7,
+       roster1:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       roster2:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:6,g2:4},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:2,g2:6},{c:"1+4",g1:6,g2:1},{c:"2+3",g1:4,g2:6}],
+       total1:30,total2:22,pts1:6,pts2:2},
+      {team1:3,team2:6,
+       roster1:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       sets:[{c:"1+2",g1:6,g2:4},{c:"3+4",g1:2,g2:6},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:6,g2:1},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:6,g2:5}],
+       total1:32,total2:23,pts1:7,pts2:1},
+      {team1:4,team2:5,
+       roster1:["Cooper Khalil","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       roster2:["Chung Tan","Simran Chawla","Tom Maloney","Brett Kurz"],
+       sets:[{c:"1+2",g1:6,g2:1},{c:"3+4",g1:1,g2:6},{c:"1+3",g1:5,g2:6},{c:"2+4",g1:5,g2:6},{c:"1+4",g1:6,g2:0},{c:"2+3",g1:0,g2:6}],
+       total1:23,total2:25,pts1:2,pts2:6},
+    ]},
+    {round:4,matches:[
+      {team1:5,team2:3,
+       roster1:["Chung Tan","James Southey","Tom Maloney","Brett Kurz"],
+       roster2:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:6,g2:0},{c:"1+3",g1:5,g2:6},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:5,g2:6},{c:"2+3",g1:5,g2:6}],
+       total1:27,total2:30,pts1:1,pts2:7},
+      {team1:6,team2:2,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       roster2:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       sets:[{c:"1+2",g1:5,g2:6},{c:"3+4",g1:6,g2:1},{c:"1+3",g1:1,g2:6},{c:"2+4",g1:6,g2:1},{c:"1+4",g1:1,g2:6},{c:"2+3",g1:5,g2:6}],
+       total1:24,total2:26,pts1:2,pts2:6},
+      {team1:7,team2:1,
+       roster1:["Jonathan Rogers","Justin Hermann","David Thurmond","Dishit Devasia"],
+       roster2:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"],
+       sets:[{c:"1+2",g1:4,g2:6},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:6,g2:3},{c:"2+4",g1:3,g2:6},{c:"1+4",g1:2,g2:6},{c:"2+3",g1:6,g2:1}],
+       total1:24,total2:28,pts1:2,pts2:6},
+    ]},
+    {round:5,matches:[
+      {team1:3,team2:1,
+       roster1:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       roster2:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:6,g2:3},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:3,g2:6},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:2,g2:6}],
+       total1:23,total2:29,pts1:2,pts2:6},
+      {team1:4,team2:7,
+       roster1:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Varun Sridhara"],
+       roster2:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:2,g2:6},{c:"1+3",g1:3,g2:6},{c:"2+4",g1:1,g2:6},{c:"1+4",g1:6,g2:5},{c:"2+3",g1:3,g2:6}],
+       total1:21,total2:32,pts1:2,pts2:6},
+      {team1:5,team2:6,
+       roster1:["Chung Tan","John Keecherer","Tom Maloney","Brett Kurz"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       sets:[{c:"1+2",g1:3,g2:6},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:1},{c:"2+4",g1:6,g2:4},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:3,g2:6}],
+       total1:29,total2:26,pts1:5,pts2:3},
+    ]},
+    {round:6,note:"Play halted mid-night due to injury",matches:[
+      {team1:6,team2:4,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Brett Kurz"],
+       roster2:["James Southey","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       sets:[{c:"1+2",g1:6,g2:4},{c:"3+4",g1:6,g2:4},{c:"1+3",g1:3,g2:6},{c:"2+4",g1:6,g2:4},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:1,g2:6}],
+       total1:26,total2:30,pts1:3,pts2:5},
+      {team1:7,team2:3,
+       roster1:["Chung Tan","John Keecherer","Nick Teo",""],
+       roster2:["Michael Rominger","David Ng","Cameron Rush",""],
+       sets:[{c:"1+2",g1:6,g2:5},{c:"3+4",g1:6,g2:7},{c:"1+3",g1:3,g2:6},{c:"2+4",g1:7,g2:6},{c:"1+4",g1:3,g2:6},{c:"2+3",g1:6,g2:7}],
+       total1:31,total2:37,pts1:2,pts2:6},
+      {team1:1,team2:2,
+       roster1:["Cooper Khalil","Simran Chawla","David Sutton","Alan Chumacero"],
+       roster2:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       sets:[{c:"1+2",g1:6,g2:2},{c:"3+4",g1:6,g2:2},{c:"1+3",g1:4,g2:6},{c:"2+4",g1:6,g2:1},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:2,g2:6}],
+       total1:30,total2:20,pts1:6,pts2:2},
+    ]},
+    {round:7,note:"Injury – some sets not completed",matches:[
+      {team1:7,team2:5,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Nick Teo","Mark Findlay"],
+       roster2:["Chung Tan","John Keecherer","Tom Maloney","Brett Kurz"],
+       sets:[{c:"1+2",g1:5,g2:6},{c:"3+4",g1:2,g2:6},{c:"1+3",g1:6,g2:5},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:2,g2:6}],
+       total1:23,total2:35,pts1:1,pts2:7},
+      {team1:1,team2:4,
+       roster1:["Cooper Khalil","Simran Chawla","Stephen Saunders","Kim Kerr"],
+       roster2:["James Southey","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:"",g2:""},{c:"1+4",g1:"",g2:""},{c:"2+3",g1:"",g2:""}],
+       total1:13,total2:14,pts1:3.5,pts2:4.5},
+      {team1:2,team2:3,
+       roster1:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       roster2:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:4,g2:6},{c:"1+3",g1:6,g2:3},{c:"2+4",g1:2,g2:6},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:"",g2:""}],
+       total1:22,total2:24,pts1:3.5,pts2:4.5},
+    ]},
+    {round:8,note:"Wash out – points split",matches:[
+      {team1:1,team2:6,
+       roster1:["Cooper Khalil","Justin Hermann","David Sutton","Chris Maniatakis"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+      {team1:2,team2:5,
+       roster1:["Enrique Lopez","Craig Kitner","Nick Teo","Varun Sridhara"],
+       roster2:["Chung Tan","James Southey","Tom Maloney","Brett Kurz"],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+      {team1:3,team2:4,
+       roster1:["Michael Rominger","David Ng","Pierre Monet","Alan Chumacero"],
+       roster2:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Dishit Devasia"],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+    ]},
+    {round:9,matches:[
+      {team1:4,team2:2,
+       roster1:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Andrew Watson"],
+       roster2:["Enrique Lopez","Craig Kitner","Shannon Watson","Varun Sridhara"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:6,g2:2},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:5,g2:6},{c:"1+4",g1:6,g2:2},{c:"2+3",g1:6,g2:1}],
+       total1:31,total2:19,pts1:6,pts2:2},
+      {team1:5,team2:1,
+       roster1:["Michael Rominger","James Southey","Tom Maloney","Brett Kurz"],
+       roster2:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"],
+       sets:[{c:"1+2",g1:4,g2:6},{c:"3+4",g1:6,g2:2},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:6,g2:1},{c:"1+4",g1:2,g2:6},{c:"2+3",g1:6,g2:2}],
+       total1:30,total2:21,pts1:6,pts2:2},
+      {team1:6,team2:7,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       roster2:["David Ng","Ben Holmes","Nick Teo","Dishit Devasia"],
+       sets:[{c:"1+2",g1:6,g2:5},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:6,g2:2},{c:"1+4",g1:2,g2:6},{c:"2+3",g1:3,g2:6}],
+       total1:26,total2:29,pts1:3,pts2:5},
+    ]},
+    {round:10,matches:[
+      {team1:2,team2:7,
+       roster1:["Enrique Lopez","Craig Kitner","Shannon Watson","Varun Sridhara"],
+       roster2:["Justin Hermann","Simran Chawla","Pierre Monet","Dishit Devasia"],
+       sets:[{c:"1+2",g1:6,g2:1},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:6,g2:4},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:6,g2:2},{c:"2+3",g1:6,g2:3}],
+       total1:31,total2:22,pts1:6,pts2:2},
+      {team1:3,team2:6,
+       roster1:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:6,g2:2},{c:"1+3",g1:6,g2:3},{c:"2+4",g1:6,g2:5},{c:"1+4",g1:6,g2:1},{c:"2+3",g1:6,g2:3}],
+       total1:36,total2:17,pts1:8,pts2:0},
+      {team1:4,team2:5,
+       roster1:["Cooper Khalil","Huss Shafai","David Thurmond","Andrew Watson"],
+       roster2:["James Southey","Ben Holmes","Tom Maloney","Brett Kurz"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:2,g2:6},{c:"1+3",g1:6,g2:5},{c:"2+4",g1:6,g2:5},{c:"1+4",g1:6,g2:5},{c:"2+3",g1:3,g2:6}],
+       total1:29,total2:30,pts1:6,pts2:2},
+    ]},
+    {round:11,note:"Wash out – points split",matches:[
+      {team1:5,team2:3,
+       roster1:["James Southey","Ben Holmes","Tom Maloney","Brett Kurz"],
+       roster2:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+      {team1:6,team2:2,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders",""],
+       roster2:["Enrique Lopez","Craig Kitner","Shannon Watson",""],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+      {team1:7,team2:1,
+       roster1:["Justin Hermann","David Thurmond","Nick Teo","Dishit Devasia"],
+       roster2:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"],
+       sets:[],total1:0,total2:0,pts1:4,pts2:4},
+    ]},
+    {round:12,matches:[
+      {team1:3,team2:1,
+       roster1:["Michael Rominger","David Ng","Soe Tun","Alan Chumacero"],
+       roster2:["Enrique Lopez","Simran Chawla","Kim Kerr","Chris Maniatakis"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:6,g2:5},{c:"1+3",g1:3,g2:6},{c:"2+4",g1:6,g2:3},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:5,g2:6}],
+       total1:28,total2:29,pts1:3,pts2:5},
+      {team1:4,team2:7,
+       roster1:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Varun Sridhara"],
+       roster2:["Chris Scott","Justin Hermann","Pierre Monet","Dishit Devasia"],
+       sets:[{c:"1+2",g1:6,g2:0},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:6,g2:4},{c:"1+4",g1:6,g2:1},{c:"2+3",g1:6,g2:3}],
+       total1:33,total2:16,pts1:7,pts2:1},
+      {team1:5,team2:6,
+       roster1:["Chung Tan","Ben Holmes","Tom Maloney","Brett Kurz"],
+       roster2:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       sets:[{c:"1+2",g1:0,g2:6},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:5,g2:6},{c:"2+4",g1:5,g2:6},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:6,g2:5}],
+       total1:25,total2:32,pts1:2,pts2:6},
+    ]},
+    {round:13,matches:[
+      {team1:6,team2:4,
+       roster1:["Vignesh Pakkiam","Eric Castricum","Stephen Saunders","Mark Findlay"],
+       roster2:["Jonathan Rogers","Ben Holmes","David Thurmond","Brett Kurz"],
+       sets:[{c:"1+2",g1:5,g2:6},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:2,g2:6},{c:"2+4",g1:2,g2:6},{c:"1+4",g1:1,g2:6},{c:"2+3",g1:6,g2:4}],
+       total1:19,total2:34,pts1:1,pts2:7},
+      {team1:7,team2:3,
+       roster1:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"],
+       roster2:["Michael Rominger","David Ng","Kim Kerr","Alan Chumacero"],
+       sets:[{c:"1+2",g1:6,g2:2},{c:"3+4",g1:6,g2:1},{c:"1+3",g1:6,g2:1},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:6,g2:3}],
+       total1:32,total2:19,pts1:6,pts2:2},
+      {team1:1,team2:2,
+       roster1:["Cooper Khalil","Simran Chawla","Tom Maloney","Chris Maniatakis"],
+       roster2:["Enrique Lopez","Craig Kitner","Shannon Watson","Varun Sridhara"],
+       sets:[{c:"1+2",g1:5,g2:6},{c:"3+4",g1:6,g2:3},{c:"1+3",g1:6,g2:1},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:6,g2:3},{c:"2+3",g1:6,g2:3}],
+       total1:33,total2:22,pts1:6,pts2:2},
+    ]},
+    {round:14,matches:[
+      {team1:7,team2:5,
+       roster1:["Chris Scott","Justin Hermann","Nick Teo","Dishit Devasia"],
+       roster2:["Chung Tan","James Southey","Tom Maloney","Brett Kurz"],
+       sets:[{c:"1+2",g1:2,g2:6},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:2,g2:6},{c:"2+4",g1:2,g2:6},{c:"1+4",g1:0,g2:6},{c:"2+3",g1:0,g2:6}],
+       total1:11,total2:36,pts1:0,pts2:8},
+      {team1:1,team2:4,
+       roster1:["Cooper Khalil","Simran Chawla","Stephen Saunders","Chris Maniatakis"],
+       roster2:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Mark Findlay"],
+       sets:[{c:"1+2",g1:6,g2:4},{c:"3+4",g1:6,g2:4},{c:"1+3",g1:2,g2:6},{c:"2+4",g1:4,g2:6},{c:"1+4",g1:6,g2:1},{c:"2+3",g1:6,g2:2}],
+       total1:30,total2:23,pts1:6,pts2:2},
+      {team1:2,team2:3,
+       roster1:["Enrique Lopez","Craig Kitner","Josh Bury","Varun Sridhara"],
+       roster2:["Michael Rominger","David Ng","Cameron Rush","Alan Chumacero"],
+       sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:4,g2:6},{c:"2+4",g1:6,g2:5},{c:"1+4",g1:3,g2:6},{c:"2+3",g1:2,g2:6}],
+       total1:24,total2:32,pts1:2,pts2:6},
+    ]},
+  ]
+};
+
+// ─── STORAGE ─────────────────────────────────────────────────────────────────
+function loadData(){try{const s=localStorage.getItem("btc_v3");if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
+function saveData(d){try{localStorage.setItem("btc_v3",JSON.stringify(d));}catch(e){}}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const COMBO_MAP={"1+2":[0,1],"3+4":[2,3],"1+3":[0,2],"2+4":[1,3],"1+4":[0,3],"2+3":[1,2]};
+const TEAM_COLORS=["#58a6ff","#3fb950","#f0a500","#ff7b72","#d2a8ff","#79c0ff","#ffa657"];
+
+function getTeam(teams,id){return teams.find(t=>t.id===id)||{id,name:"?",players:[]};}
+function teamName(team){if(!team)return"?";const f=team.players[0]?.split(" ")[0];return f?`Team ${f}`:team.name;}
+function tName(teams,id){return teamName(getTeam(teams,id));}
+function fmtDate(iso){if(!iso)return"";const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});}
+function isSub(teams,player,teamId){return!getTeam(teams,teamId).players.includes(player);}
+
+function calcLadder(data,upToRound=Infinity){
+  const map={};
+  data.teams.forEach(t=>{map[t.id]={id:t.id,P:0,W:0,D:0,L:0,Pts:0,GF:0,GA:0,setW:0,setL:0};});
+  data.results.filter(r=>r.round<=upToRound).forEach(rnd=>{
+    rnd.matches.forEach(m=>{
+      const r1=map[m.team1],r2=map[m.team2];
+      if(!r1||!r2)return;
+      r1.P++;r2.P++;
+      r1.Pts+=m.pts1;r2.Pts+=m.pts2;
+      r1.GF+=m.total1;r1.GA+=m.total2;
+      r2.GF+=m.total2;r2.GA+=m.total1;
+      if(m.pts1>m.pts2){r1.W++;r2.L++;}
+      else if(m.pts2>m.pts1){r2.W++;r1.L++;}
+      else{r1.D++;r2.D++;}
+      m.sets.forEach(s=>{
+        const lg1=Number(s.g1)||0, lg2=Number(s.g2)||0;
+        if(lg1>lg2){r1.setW++;r2.setL++;}
+        else if(lg2>lg1){r2.setW++;r1.setL++;}
+      });
+    });
+  });
+  return Object.values(map).sort((a,b)=>(b.Pts-a.Pts)||((b.GF/(b.GF+b.GA)||0)-(a.GF/(a.GF+a.GA)||0)));
+}
+
+function calcPlayerStats(data){
+  const{teams,results}=data;
+  const stats={};
+  function ensure(name){
+    if(!stats[name]){
+      const t=teams.find(x=>x.players.includes(name));
+      stats[name]={name,teamId:t?.id||null,teamName:t?teamName(t):"Casual Sub",
+        W:0,L:0,gF:0,gA:0,
+        subW:0,subL:0,subGF:0,subGA:0,
+        pos:{1:{W:0,L:0,gF:0,gA:0},2:{W:0,L:0,gF:0,gA:0},3:{W:0,L:0,gF:0,gA:0},4:{W:0,L:0,gF:0,gA:0}},
+        l3:{W:0,L:0,gF:0,gA:0}};
+    }
+    return stats[name];
+  }
+  teams.forEach(t=>t.players.forEach(p=>ensure(p)));
+  const allRnds=[...results].sort((a,b)=>a.round-b.round).map(r=>r.round);
+  const l3=new Set(allRnds.slice(-3));
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+  results.forEach(rnd=>{
+    const inL3=l3.has(rnd.round);
+    rnd.matches.forEach(m=>{
+      m.sets.forEach((s,si)=>{
+        const combo=s.c||COMBOS[si];
+        const idxs=COMBO_MAP[combo];
+        if(!idxs)return;
+        const[ia,ib]=idxs;
+        // Coerce to numbers — admin inputs save values as strings
+        const sg1=Number(s.g1)||0, sg2=Number(s.g2)||0;
+        [
+          {name:m.roster1[ia],pos:ia+1,tid:m.team1,gMe:sg1,gOp:sg2},
+          {name:m.roster1[ib],pos:ib+1,tid:m.team1,gMe:sg1,gOp:sg2},
+          {name:m.roster2[ia],pos:ia+1,tid:m.team2,gMe:sg2,gOp:sg1},
+          {name:m.roster2[ib],pos:ib+1,tid:m.team2,gMe:sg2,gOp:sg1},
+        ].forEach(({name,pos,tid,gMe,gOp})=>{
+          if(!name)return;
+          const st=ensure(name);
+          const W=gMe>gOp?1:0,L=gOp>gMe?1:0;
+          const sub=isSub(teams,name,tid);
+          // Always accumulate game totals; only count W/L when set has a winner
+          if(sub){
+            if(W)st.subW++;if(L)st.subL++;
+            st.subGF+=gMe;st.subGA+=gOp;
+          } else{
+            if(W)st.W++;if(L)st.L++;
+            st.gF+=gMe;st.gA+=gOp;
+            if(pos>=1&&pos<=4){st.pos[pos].W+=W;st.pos[pos].L+=L;st.pos[pos].gF+=gMe;st.pos[pos].gA+=gOp;}
+            if(inL3){st.l3.W+=W;st.l3.L+=L;st.l3.gF+=gMe;st.l3.gA+=gOp;}
+          }
+        });
+      });
+    });
+  });
+  return Object.values(stats);
+}
+
+function calcPartnerStats(data){
+  const{results}=data;
+  const pairs={};
+  function key(a,b){return[a,b].sort().join(" & ");}
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+  results.forEach(rnd=>{
+    rnd.matches.forEach(m=>{
+      m.sets.forEach((s,si)=>{
+        const combo=s.c||COMBOS[si];
+        const idxs=COMBO_MAP[combo];
+        if(!idxs)return;
+        const[ia,ib]=idxs;
+        const pg1=Number(s.g1)||0, pg2=Number(s.g2)||0;
+        [[m.roster1[ia],m.roster1[ib],pg1,pg2],[m.roster2[ia],m.roster2[ib],pg2,pg1]].forEach(([pa,pb,gw,gl])=>{
+          if(!pa||!pb)return;
+          const k=key(pa,pb);
+          if(!pairs[k])pairs[k]={pair:k,W:0,L:0,gF:0,gA:0};
+          if(gw>gl){pairs[k].W++;pairs[k].gF+=gw;pairs[k].gA+=gl;}
+          else if(gl>gw){pairs[k].L++;pairs[k].gF+=gw;pairs[k].gA+=gl;}
+        });
+      });
+    });
+  });
+  return Object.values(pairs);
+}
+
+function swPct(W,L){if(W+L===0)return null;return W/(W+L);}
+function gwPct(gF,gA){if(gF+gA===0)return null;return gF/(gF+gA);}
+function fmtPct(n){return n===null?"–":Math.round(n*100)+"%";}
+function sortByPerf(arr,wKey="W",lKey="L",gFKey="gF",gAKey="gA"){
+  return[...arr].sort((a,b)=>{
+    const sa=swPct(a[wKey],a[lKey]),sb=swPct(b[wKey],b[lKey]);
+    if(sb!==sa)return(sb||0)-(sa||0);
+    const ga=gwPct(a[gFKey],a[gAKey]),gb=gwPct(b[gFKey],b[gAKey]);
+    return(gb||0)-(ga||0);
+  });
+}
+
+// ─── HEADER ──────────────────────────────────────────────────────────────────
+function Header({page,setPage}){
+  const tabs=[{id:"home",l:"🏠 Home"},{id:"results",l:"📋 Results"},{id:"stats",l:"📊 Stats"},{id:"teams",l:"👥 Teams"},{id:"fixtures",l:"📅 Fixtures"},{id:"admin",l:"⚙️ Admin"}];
+  return(
+    <div style={{position:"sticky",top:0,zIndex:100,background:null}}>
+      <div style={{background:"#0d1117",borderBottom:"1px solid #21262d",padding:"12px 16px 8px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"#0d2a0d",border:"1px solid #2d5a2d",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>🎾</div>
+          <div>
+            <div style={{color:"#e6edf3",fontWeight:900,fontSize:16,letterSpacing:-0.3}}>Berwick Tennis Club</div>
+            <div style={{color:"#3fb950",fontSize:11,fontWeight:700}}>Thursday Night Competition · Autumn 2026</div>
+          </div>
+        </div>
+        <div className="tab-bar" style={{marginTop:8}}>
+          {tabs.map(t=><button key={t.id} className={`tab${page===t.id?" active":""}`} onClick={()=>setPage(t.id)}>{t.l}</button>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── HOME PAGE ───────────────────────────────────────────────────────────────
+function HomePage({data}){
+  const ladder=useMemo(()=>calcLadder(data),[data]);
+  const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
+  const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
+
+  const topTeam=ladder[0];
+  const topTeamData=topTeam?getTeam(data.teams,topTeam.id):null;
+
+  const bestPlayer=useMemo(()=>{
+    const sorted=sortByPerf(playerStats.filter(p=>p.W+p.L>=3));
+    return sorted[0]||null;
+  },[playerStats]);
+
+  const bestPair=useMemo(()=>{
+    const sorted=sortByPerf(partnerStats.filter(p=>p.W+p.L>=3));
+    return sorted[0]||null;
+  },[partnerStats]);
+
+  // Getting Hot: last 3 rounds, non-sub only, min 3 sets
+  const hotPlayers=useMemo(()=>{
+    return sortByPerf(
+      playerStats.filter(p=>p.l3.W+p.l3.L>=3),
+      "W","L","gF","gA" // note: we'll override with l3 values below
+    ).map(p=>({...p,...{W:p.l3.W,L:p.l3.L,gF:p.l3.gF,gA:p.l3.gA}}))
+     .sort((a,b)=>{
+       const sa=swPct(a.W,a.L),sb=swPct(b.W,b.L);
+       if(sb!==sa)return(sb||0)-(sa||0);
+       return(gwPct(b.gF,b.gA)||0)-(gwPct(a.gF,a.gA)||0);
+     }).slice(0,3);
+  },[playerStats]);
+
+  const nextRound=data.fixtures.find(f=>!data.results.find(r=>r.round===f.round));
+  const lastRound=data.results.length;
+
+  return(
+    <div className="page">
+      {/* Top Team Spotlight */}
+      {topTeamData&&(
+        <div style={{background:`#0d2a0d`,borderRadius:"var(--radius)",padding:16,marginBottom:12,color:"white"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:800,color:"var(--green-mid)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>🏆 Current Leaders</div>
+              <div style={{fontSize:22,fontWeight:900}}>{teamName(topTeamData)}</div>
+              <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:2}}>{topTeam.Pts} pts · {topTeam.W}W {topTeam.D}D {topTeam.L}L</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:32,fontWeight:900,color:"var(--green)"}}>1st</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>After Rd {lastRound}</div>
+            </div>
+          </div>
+          <hr style={{border:"none",borderTop:"1px solid rgba(255,255,255,0.1)",margin:"12px 0"}}/>
+          <div style={{fontSize:12,fontWeight:700,color:"var(--green-mid)",marginBottom:6}}>Roster</div>
+          <div className="grid-2">
+            {topTeamData.players.map((p,i)=>(
+              <div key={p} style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(34,197,94,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"var(--green-mid)",flexShrink:0}}>{i+1}</div>
+                <span style={{fontSize:13,fontWeight:600}}>{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Mini Ladder */}
+      <div className="card" style={{padding:0,overflow:"hidden"}}>
+        <div style={{padding:"10px 14px",borderBottom:"1px solid var(--gray-border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <h3 style={{margin:0}}>Ladder</h3>
+          <span className="badge badge-navy">Rd {lastRound} of 14</span>
+        </div>
+        <table>
+          <thead><tr><th style={{width:28}}>#</th><th>Team</th><th style={{textAlign:"center"}}>P</th><th style={{textAlign:"center"}}>Pts</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+          <tbody>
+            {ladder.map((t,i)=>{
+              const cls=`${i<4?"finals-row":""} pos-border-${Math.min(i+1,4)}`;
+              const team=getTeam(data.teams,t.id);
+              return(
+                <tr key={t.id} className={cls}>
+                  <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                  <td><div style={{fontWeight:700}}>{teamName(team)}</div>{i<4&&<div style={{fontSize:10,color:"var(--green-dark)",fontWeight:700}}>Finals</div>}</td>
+                  <td style={{textAlign:"center"}}>{t.P}</td>
+                  <td style={{textAlign:"center",fontWeight:800,color:"#e6edf3"}}>{t.Pts}</td>
+                  <td style={{textAlign:"center",fontWeight:700,color:"#8b949e"}}>{t.GF+t.GA>0?(t.GF/(t.GF+t.GA)*100).toFixed(2)+'%':'–'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Next Up */}
+      {nextRound&&(
+        <div className="card">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <h3 style={{margin:0}}>Next Up – Round {nextRound.round}</h3>
+            <span style={{fontSize:12,color:"var(--gray)"}}>{fmtDate(nextRound.date)}</span>
+          </div>
+          {nextRound.matches.map(m=>{
+            const t1=getTeam(data.teams,m.t1),t2=getTeam(data.teams,m.t2);
+            return(
+              <div key={`${m.t1}-${m.t2}`} style={{display:"flex",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--gray-border)"}}>
+                <span style={{flex:1,fontWeight:700,fontSize:13}}>{teamName(t1)}</span>
+                <span style={{padding:"2px 10px",fontSize:11,color:"var(--gray)",fontWeight:700}}>vs</span>
+                <span style={{flex:1,fontWeight:700,fontSize:13,textAlign:"right"}}>{teamName(t2)}</span>
+              </div>
+            );
+          })}
+          <div style={{marginTop:8,fontSize:12,color:"var(--gray)"}}>Bye: <strong>{tName(data.teams,nextRound.bye)}</strong></div>
+        </div>
+      )}
+
+      {/* Stats Row */}
+      {(bestPlayer||bestPair)&&(
+        <div className="grid-2">
+          {bestPlayer&&(
+            <div className="stat-highlight">
+              <div className="lbl">🏅 Best Player – Season</div>
+              <div className="val">{fmtPct(swPct(bestPlayer.W,bestPlayer.L))}</div>
+              <div className="name">{bestPlayer.name}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginTop:2}}>{bestPlayer.W}W {bestPlayer.L}L</div>
+            </div>
+          )}
+          {bestPair&&(
+            <div className="stat-highlight">
+              <div className="lbl">🤝 Best Partnership – Season</div>
+              <div className="val">{fmtPct(swPct(bestPair.W,bestPair.L))}</div>
+              <div className="name" style={{fontSize:12}}>{bestPair.pair}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginTop:2}}>{bestPair.W}W {bestPair.L}L</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Getting Hot */}
+      {hotPlayers.length>0&&(
+        <div className="card">
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+            <div style={{fontSize:20}}>🔥</div>
+            <div>
+              <h3 style={{margin:0}}>Getting Hot</h3>
+              <div style={{fontSize:11,color:"var(--gray)"}}>Best win % – last 3 rounds (own team only)</div>
+            </div>
+          </div>
+          {hotPlayers.map((p,i)=>(
+            <div key={p.name} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:i<hotPlayers.length-1?"1px solid var(--gray-border)":"none"}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:i===0?"#fef3c7":i===1?"var(--navy-light)":"var(--gray-light)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,flexShrink:0}}>
+                {i===0?"🔥":i===1?"2":"3"}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700}}>{p.name}</div>
+                <div style={{fontSize:11,color:"var(--gray)"}}>{p.teamName}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontWeight:900,fontSize:16,color:"var(--green-dark)"}}>{fmtPct(swPct(p.W,p.L))}</div>
+                <div style={{fontSize:11,color:"var(--gray)"}}>{p.W}W {p.L}L · games {fmtPct(gwPct(p.gF,p.gA))}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LADDER CHART ─────────────────────────────────────────────────────────────
+function LadderChart({data, upToRound}){
+  const allRounds=[...data.results].sort((a,b)=>a.round-b.round).map(r=>r.round);
+  const rounds=upToRound ? allRounds.filter(r=>r<=upToRound) : allRounds;
+  if(rounds.length<2)return<div style={{padding:16,textAlign:"center",color:"var(--gray)",fontSize:13}}>Chart available after 2 rounds with results</div>;
+  const history=rounds.map(rnd=>calcLadder(data,rnd));
+  const W=500,H=175,PAD={t:16,b:20,l:20,r:72};
+  const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
+  const xp=i=>PAD.l+i/(rounds.length-1)*pw;
+  const yp=pos=>PAD.t+(pos-1)/6*ph;
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
+      {[1,2,3,4,5,6,7].map(pos=>(
+        <g key={pos}>
+          <line x1={PAD.l} x2={W-PAD.r} y1={yp(pos)} y2={yp(pos)} stroke="#21262d" strokeWidth={1}/>
+          <text x={PAD.l-4} y={yp(pos)+3.5} fontSize={9} fill="#484f58" textAnchor="end" fontWeight={700}>{pos}</text>
+        </g>
+      ))}
+      {data.teams.map((team,ti)=>{
+        const pts=history.map((lad,i)=>{
+          const pos=lad.findIndex(l=>l.id===team.id)+1;
+          return{x:xp(i),y:yp(pos),pos};
+        });
+        const polyPts=pts.map(p=>`${p.x},${p.y}`).join(" ");
+        const last=pts[pts.length-1];
+        return(
+          <g key={team.id}>
+            <polyline points={polyPts} fill="none" stroke={TEAM_COLORS[ti]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+            {pts.map((p,i)=><circle key={i} cx={p.x} cy={p.y} r={3} fill={TEAM_COLORS[ti]}/>)}
+            <text x={last.x+6} y={last.y+4} fontSize={9} fill={TEAM_COLORS[ti]} fontWeight={800}>{teamName(team).replace("Team ","")}</text>
+          </g>
+        );
+      })}
+      {rounds.map((r,i)=>(
+        <text key={r} x={xp(i)} y={H-3} fontSize={9} fill="var(--gray)" textAnchor="middle">R{r}</text>
+      ))}
+    </svg>
+  );
+}
+
+// ─── RESULTS PAGE ─────────────────────────────────────────────────────────────
+function ResultsPage({data,navRound,clearNavRound}){
+  const{results,teams,fixtures}=data;
+  const[selRound,setSelRound]=useState(()=>{
+    if(navRound)return navRound;
+    return results.length>0?results[results.length-1].round:1;
+  });
+  useEffect(()=>{if(navRound){setSelRound(navRound);clearNavRound&&clearNavRound();}},[navRound]);
+  const ladder=useMemo(()=>calcLadder(data),[data]);
+  const rnd=results.find(r=>r.round===selRound);
+
+  return(
+    <div className="page">
+      {/* Mini ladder */}
+      <div className="card" style={{padding:0,overflow:"hidden",marginBottom:12}}>
+        <div style={{overflowX:"auto"}}>
+          <table style={{minWidth:400}}>
+            <thead><tr>
+              <th style={{width:28}}>#</th><th>Team</th>
+              <th style={{textAlign:"center"}}>P</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>D</th><th style={{textAlign:"center"}}>L</th>
+              <th style={{textAlign:"center",color:"#e6edf3"}}>Pts</th>
+              <th style={{textAlign:"center"}}>Set%</th>
+              <th style={{textAlign:"center"}}>Game%</th>
+            </tr></thead>
+            <tbody>
+              {ladder.map((t,i)=>{
+                const team=getTeam(teams,t.id);
+                const sp=swPct(t.setW,t.setL);
+                const gp=t.GF+t.GA>0?(t.GF/(t.GF+t.GA)*100).toFixed(2)+'%':'–';
+                return(
+                  <tr key={t.id} className={i<4?"finals-row":""}>
+                    <td style={{textAlign:"center",fontWeight:800,fontSize:13}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                    <td style={{fontWeight:700,fontSize:13}}>{teamName(team)}</td>
+                    <td style={{textAlign:"center"}}>{t.P}</td>
+                    <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{t.W}</td>
+                    <td style={{textAlign:"center"}}>{t.D}</td>
+                    <td style={{textAlign:"center",color:"var(--red)"}}>{t.L}</td>
+                    <td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{t.Pts}</td>
+                    <td style={{textAlign:"center",fontSize:13,fontWeight:700}}>{fmtPct(sp)}</td>
+                    <td style={{textAlign:"center",fontSize:13,color:"#8b949e"}}>{gp}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Ladder chart */}
+      <div className="card" style={{padding:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <h3 style={{margin:0}}>Ladder Progression</h3>
+          <span style={{fontSize:11,color:"var(--gray)"}}>Snapshot after Round {selRound}</span>
+        </div>
+        <LadderChart data={data} upToRound={selRound}/>
+      </div>
+
+      {/* Round selector */}
+      <div className="card" style={{padding:10}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {fixtures.map(f=>{
+            const has=results.find(r=>r.round===f.round);
+            return(
+              <button key={f.round} onClick={()=>setSelRound(f.round)} style={{
+                padding:"5px 11px",borderRadius:6,border:"1px solid",
+                borderColor:selRound===f.round?"#3fb950":"#30363d",
+                background:selRound===f.round?"#0d2a0d":has?"#1c2128":"#161b22",
+                color:selRound===f.round?"#3fb950":has?"#c9d1d9":"#484f58",
+                fontWeight:800,fontSize:12,cursor:"pointer"
+              }}>R{f.round}</button>
+            );
+          })}
+        </div>
+      </div>
+
+      {rnd?rnd.matches.map((m,mi)=><MatchCard key={mi} m={m} teams={teams}/>):(
+        <div className="card" style={{textAlign:"center",color:"var(--gray)",padding:28}}>
+          <div style={{fontSize:32}}>📋</div>
+          <div style={{marginTop:8}}>No results yet for Round {selRound}</div>
+          <div style={{fontSize:12,marginTop:4}}>{fmtDate(fixtures.find(f=>f.round===selRound)?.date)}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MatchCard({m,teams}){
+  const t1=getTeam(teams,m.team1),t2=getTeam(teams,m.team2);
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+  const winner=m.pts1>m.pts2?teamName(t1):m.pts2>m.pts1?teamName(t2):"Draw";
+  return(
+    <div className="card" style={{padding:0,overflow:"hidden"}}>
+      <div className="result-header">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:800,fontSize:15}}>{teamName(t1)}</div>
+            <div style={{fontSize:24,fontWeight:900,color:"var(--green)"}}>{m.pts1}</div>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>pts</div>
+            <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)"}}>vs</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>{m.total1}–{m.total2} games</div>
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontWeight:800,fontSize:15}}>{teamName(t2)}</div>
+            <div style={{fontSize:24,fontWeight:900,color:"var(--green)"}}>{m.pts2}</div>
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"0 12px"}}>
+        {(!m.sets||m.sets.length===0)&&<div style={{padding:"20px",textAlign:"center",color:"#8b949e",fontSize:13}}>🌧️ Wash out — points split {m.pts1}–{m.pts2}</div>}
+        {m.sets&&m.sets.map((s,i)=>{
+          const combo=s.c||COMBOS[i];
+          const idxs=COMBO_MAP[combo]||[0,1];
+          const p1a=m.roster1[idxs[0]],p1b=m.roster1[idxs[1]];
+          const p2a=m.roster2[idxs[0]],p2b=m.roster2[idxs[1]];
+          const w1=s.g1>s.g2,w2=s.g2>s.g1;
+          return(
+            <div key={i} className="score-pair">
+              <div>
+                <span className="player-name" style={{fontWeight:w1?700:400,color:w1?"#e6edf3":"#8b949e"}}>{p1a}{isSub(teams,p1a,m.team1)&&<span className="sub-badge">SUB</span>}</span>
+                <span className="player-name" style={{fontWeight:w1?700:400,color:w1?"#e6edf3":"#8b949e"}}>{p1b}{isSub(teams,p1b,m.team1)&&<span className="sub-badge">SUB</span>}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
+                <span className={w1?"score-win":"score-lose"} style={{fontSize:20}}>{s.g1}</span>
+                <span className="combo-lbl">{combo}</span>
+                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2a}{isSub(teams,p2a,m.team2)&&<span className="sub-badge">SUB</span>}</span>
+                <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2b}{isSub(teams,p2b,m.team2)&&<span className="sub-badge">SUB</span>}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{padding:"8px 14px",background:"#0d2a0d",fontSize:12,color:"#3fb950",fontWeight:700,borderTop:"1px solid #2d5a2d"}}>
+        {winner==="Draw"?"🤝 Match drawn":`🏆 Won by ${winner}`}
+      </div>
+    </div>
+  );
+}
+
+// ─── STATS PAGE ───────────────────────────────────────────────────────────────
+function StatsPage({data}){
+  const[tab,setTab]=useState("overall");
+  const[posTab,setPosTab]=useState(1);
+  const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
+  const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
+
+  const allPlayers=useMemo(()=>sortByPerf(playerStats.filter(p=>p.W+p.L>0)),[playerStats]);
+  const allPairs=useMemo(()=>sortByPerf(partnerStats.filter(p=>p.W+p.L>=3)),[partnerStats]);
+  const allSubs=useMemo(()=>sortByPerf(playerStats.filter(p=>p.subW+p.subL>0),"subW","subL","subGF","subGA"),[playerStats]);
+
+  const byPos=useMemo(()=>{
+    const result={};
+    [1,2,3,4].forEach(pos=>{
+      result[pos]=sortByPerf(
+        playerStats.filter(p=>p.pos[pos].W+p.pos[pos].L>0).map(p=>({...p,...p.pos[pos],_posW:p.pos[pos].W,_posL:p.pos[pos].L,_posGF:p.pos[pos].gF,_posGA:p.pos[pos].gA})),
+        "_posW","_posL","_posGF","_posGA"
+      );
+    });
+    return result;
+  },[playerStats]);
+
+  return(
+    <div className="page">
+      <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+        {[["overall","Players – Overall"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
+          <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
+        ))}
+      </div>
+
+      {tab==="overall"&&(
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+            <h2 style={{margin:0}}>Players – Overall</h2>
+            <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Ranked by Set Win %, then Game Win %. Includes all players and substitutes.</div>
+          </div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{minWidth:360}}>
+              <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+              <tbody>
+                {allPlayers.map((p,i)=>(
+                  <tr key={p.name}>
+                    <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                    <td style={{fontWeight:700}}>{p.name}</td>
+                    <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                    <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p.W}</td>
+                    <td style={{textAlign:"center",color:"var(--red)"}}>{p.L}</td>
+                    <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p.W,p.L))}</td>
+                    <td style={{textAlign:"center",fontSize:12,color:"var(--gray)"}}>{fmtPct(gwPct(p.gF,p.gA))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab==="bypos"&&(
+        <div>
+          <div style={{display:"flex",gap:6,marginBottom:12}}>
+            {[1,2,3,4].map(pos=>(
+              <button key={pos} className={`btn btn-sm ${posTab===pos?"btn-primary":"btn-secondary"}`} onClick={()=>setPosTab(pos)}>
+                Position {pos}
+              </button>
+            ))}
+          </div>
+          <div className="card" style={{padding:0,overflow:"hidden"}}>
+            <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+              <h2 style={{margin:0}}>Players – Position {posTab}</h2>
+              <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Ranked by Set Win %, then Game Win % at this position (includes subs playing here)</div>
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:340}}>
+                <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+                <tbody>
+                  {(byPos[posTab]||[]).map((p,i)=>(
+                    <tr key={p.name}>
+                      <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                      <td style={{fontWeight:700}}>{p.name}</td>
+                      <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                      <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p._posW}</td>
+                      <td style={{textAlign:"center",color:"var(--red)"}}>{p._posL}</td>
+                      <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p._posW,p._posL))}</td>
+                      <td style={{textAlign:"center",fontSize:12,color:"var(--gray)"}}>{fmtPct(gwPct(p._posGF,p._posGA))}</td>
+                    </tr>
+                  ))}
+                  {(byPos[posTab]||[]).length===0&&<tr><td colSpan={7} style={{textAlign:"center",color:"var(--gray)",padding:20}}>No data yet</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="partner"&&(
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+            <h2 style={{margin:0}}>Best Partnerships</h2>
+            <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Min. 3 sets together · Set%, then Game%</div>
+          </div>
+          <table>
+            <thead><tr><th style={{width:28}}>#</th><th>Partnership</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+            <tbody>
+              {allPairs.map((p,i)=>(
+                <tr key={p.pair}>
+                  <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                  <td style={{fontWeight:600,fontSize:13}}>{p.pair}</td>
+                  <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p.W}</td>
+                  <td style={{textAlign:"center",color:"var(--red)"}}>{p.L}</td>
+                  <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p.W,p.L))}</td>
+                  <td style={{textAlign:"center",fontSize:12,color:"var(--gray)"}}>{fmtPct(gwPct(p.gF,p.gA))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab==="sub"&&(
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+            <h2 style={{margin:0}}>Substitute Win %</h2>
+            <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Sets played as substitute for another team · Set%, then Game%</div>
+          </div>
+          {allSubs.length===0?(
+            <div style={{padding:24,textAlign:"center",color:"var(--gray)"}}>No substitute data yet</div>
+          ):(
+            <table>
+              <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Home Team</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+              <tbody>
+                {allSubs.map((p,i)=>(
+                  <tr key={p.name}>
+                    <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                    <td style={{fontWeight:700}}>{p.name}</td>
+                    <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                    <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p.subW}</td>
+                    <td style={{textAlign:"center",color:"var(--red)"}}>{p.subL}</td>
+                    <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p.subW,p.subL))}</td>
+                    <td style={{textAlign:"center",fontSize:12,color:"var(--gray)"}}>{fmtPct(gwPct(p.subGF,p.subGA))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TEAMS PAGE ───────────────────────────────────────────────────────────────
+function TeamsPage({data}){
+  const[sel,setSel]=useState(1);
+  const ladder=useMemo(()=>calcLadder(data),[data]);
+  const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
+  const team=getTeam(data.teams,sel);
+  const teamLadder=ladder.find(t=>t.id===sel)||{};
+  const pos=ladder.findIndex(t=>t.id===sel)+1;
+  const sp=swPct(teamLadder.setW||0,teamLadder.setL||0);
+  const gp=teamLadder.GF&&teamLadder.GA?teamLadder.GF/(teamLadder.GF+teamLadder.GA):null;
+  const nextFix=data.fixtures.find(f=>{
+    const hasRes=data.results.find(r=>r.round===f.round);
+    return!hasRes&&f.matches.some(m=>m.t1===sel||m.t2===sel);
+  });
+  const nextOpp=nextFix?nextFix.matches.find(m=>m.t1===sel||m.t2===sel):null;
+  const nextOppId=nextOpp?(nextOpp.t1===sel?nextOpp.t2:nextOpp.t1):null;
+
+  return(
+    <div className="page">
+      <div className="card" style={{padding:10}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {data.teams.map(t=>(
+            <button key={t.id} onClick={()=>setSel(t.id)} style={{
+              padding:"6px 14px",borderRadius:20,border:"2px solid",
+              borderColor:sel===t.id?"var(--navy)":"var(--gray-border)",
+              background:sel===t.id?"var(--navy)":"white",
+              color:sel===t.id?"white":"var(--navy)",
+              fontWeight:800,fontSize:12,cursor:"pointer"
+            }}>{teamName(t)}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Team stats banner */}
+      <div style={{background:`#0d2a0d`,borderRadius:"var(--radius)",padding:14,marginBottom:12,color:"white"}}>
+        <div style={{fontWeight:900,fontSize:18,marginBottom:8}}>{teamName(team)}</div>
+        <div className="grid-3" style={{gridTemplateColumns:"repeat(4,1fr)"}}>
+          {[
+            {v:pos===0?"–":`${pos===1?"🥇":pos===2?"🥈":pos===3?"🥉":pos}`,l:"Position"},
+            {v:teamLadder.Pts||0,l:"Points"},
+            {v:fmtPct(sp),l:"Set Win%"},
+            {v:fmtPct(gp),l:"Game Win%"},
+          ].map(({v,l})=>(
+            <div key={l} style={{textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:900,color:"var(--green)"}}>{v}</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.6)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginTop:2}}>{l}</div>
+            </div>
+          ))}
+        </div>
+        {nextOppId&&(
+          <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,0.1)",fontSize:13}}>
+            <span style={{color:"rgba(255,255,255,0.6)"}}>Next: </span>
+            <strong style={{color:"var(--green-mid)"}}>vs {tName(data.teams,nextOppId)}</strong>
+            <span style={{color:"rgba(255,255,255,0.5)",fontSize:11,marginLeft:6}}>Round {nextFix.round} · {fmtDate(nextFix.date)}</span>
+          </div>
+        )}
+        {!nextOppId&&<div style={{marginTop:8,fontSize:12,color:"rgba(255,255,255,0.4)"}}>Season complete</div>}
+      </div>
+
+      <div className="card">
+        <h3 style={{marginBottom:10}}>Players</h3>
+        {team.players.map((p,i)=>{
+          const ps=playerStats.find(s=>s.name===p)||{W:0,L:0,gF:0,gA:0};
+          return(
+            <div key={p} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:i<team.players.length-1?"1px solid var(--gray-border)":"none"}}>
+              <div style={{width:34,height:34,borderRadius:"50%",background:"var(--navy-light)",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,color:"#e6edf3",fontSize:14,flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700}}>{p}</div>
+                <div style={{fontSize:11,color:"var(--gray)"}}>Position {i+1}</div>
+              </div>
+              {ps.W+ps.L>0&&(
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontWeight:900,color:"var(--green-dark)"}}>{fmtPct(swPct(ps.W,ps.L))}</div>
+                  <div style={{fontSize:11,color:"var(--gray)"}}>{ps.W}W {ps.L}L</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="card">
+        <h3 style={{marginBottom:6}}>Casual Substitutes</h3>
+        {data.casualSubs.length===0?(
+          <div style={{color:"var(--gray)",fontSize:13}}>None added yet</div>
+        ):data.casualSubs.map((s,i)=>(
+          <div key={i} style={{padding:"5px 0",fontSize:13,borderBottom:i<data.casualSubs.length-1?"1px solid var(--gray-border)":"none"}}>
+            {s} <span className="badge badge-gold">Casual Sub</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── FIXTURES PAGE ────────────────────────────────────────────────────────────
+function FixturesPage({data,navigate,ladder=[]}){
+  const{fixtures,results,teams}=data;
+  return(
+    <div className="page">
+      <h2 style={{marginBottom:12}}>Season Fixtures</h2>
+      {fixtures.map(f=>{
+        const res=results.find(r=>r.round===f.round);
+        return(
+          <div key={f.round} className="card" style={{padding:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div>
+                <span style={{fontWeight:800,color:"#e6edf3"}}>Round {f.round}</span>
+                <span style={{fontSize:12,color:"var(--gray)",marginLeft:8}}>{fmtDate(f.date)}</span>
+              </div>
+              {res?<span className="badge badge-green">✓ Played</span>:<span className="badge badge-gray">Upcoming</span>}
+            </div>
+            {f.matches.map(m=>{
+              const t1=getTeam(teams,m.t1),t2=getTeam(teams,m.t2);
+              const mr=res?.matches.find(r=>r.team1===m.t1&&r.team2===m.t2);
+              return(
+                <div key={`${m.t1}-${m.t2}`} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid var(--gray-border)"}}>
+                  <button onClick={()=>res&&navigate("results",{round:f.round})} style={{
+                    flex:1,textAlign:"left",fontWeight:700,fontSize:13,background:"none",border:"none",padding:0,
+                    cursor:res?"pointer":"default",color:res?"#58a6ff":"#c9d1d9",
+                    textDecoration:res?"underline dotted":"none",textUnderlineOffset:2
+                  }}>{teamName(t1)}</button>
+                  {mr?(
+                    <span style={{fontWeight:900,fontSize:13,color:"var(--green-dark)",minWidth:40,textAlign:"center"}}>{mr.pts1}–{mr.pts2}</span>
+                  ):(
+                    <span style={{fontSize:12,color:"var(--gray)",minWidth:20,textAlign:"center"}}>vs</span>
+                  )}
+                  <button onClick={()=>res&&navigate("results",{round:f.round})} style={{
+                    flex:1,textAlign:"right",fontWeight:700,fontSize:13,background:"none",border:"none",padding:0,
+                    cursor:res?"pointer":"default",color:res?"#58a6ff":"#c9d1d9",
+                    textDecoration:res?"underline dotted":"none",textUnderlineOffset:2
+                  }}>{teamName(t2)}</button>
+                </div>
+              );
+            })}
+            <div style={{marginTop:6,fontSize:12,color:"var(--gray)"}}>Bye: <strong>{tName(teams,f.bye)}</strong></div>
+          </div>
+        );
+      })}
+
+      <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d"}}>
+        <h3 style={{color:"#3fb950",marginBottom:8}}>Finals Format</h3>
+        {(()=>{
+          const top4=ladder.slice(0,4);
+          const n=i=>top4[i]?teamName(getTeam(data.teams,top4[i].id)):`${["1st","2nd","3rd","4th"][i]}`;
+          const finals=[
+            {label:"Elimination & Qualifying",date:"4 Jun 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
+            {label:"Preliminary Final",date:"11 Jun 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
+            {label:"Grand Final",date:"18 Jun 2026",detail:`Winner ${n(0)}/${n(1)} v Winner Prelim`},
+          ];
+          return finals.map((f,i)=>(
+            <div key={i} style={{padding:"8px 0",borderBottom:i<2?"1px solid #2d5a2d":"none"}}>
+              <div style={{fontWeight:800,fontSize:13,color:"#3fb950"}}>{f.label}</div>
+              <div style={{fontSize:12,color:"#8b949e"}}>{f.date} · {f.detail}</div>
+            </div>
+          ));
+        })()}
+      </div>
+    </div>
+  );
+}
+
+// ─── ADMIN ────────────────────────────────────────────────────────────────────
+function AdminPage({data,setData}){
+  const[authed,setAuthed]=useState(false);
+  const[pw,setPw]=useState("");
+  const[err,setErr]=useState("");
+  const[tab,setTab]=useState("scores");
+  if(!authed){
+    return(
+      <div className="page" style={{maxWidth:360}}>
+        <div className="card">
+          <h2 style={{marginBottom:16}}>Admin Login</h2>
+          <div className="form-group">
+            <label>Password</label>
+            <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"){if(pw===data.adminPassword)setAuthed(true);else setErr("Incorrect password");}}}
+              placeholder="Enter admin password"/>
+          </div>
+          {err&&<div className="alert alert-error">{err}</div>}
+          <button className="btn btn-primary" style={{width:"100%"}} onClick={()=>{if(pw===data.adminPassword)setAuthed(true);else setErr("Incorrect password");}}>Login</button>
+          <div style={{marginTop:10,fontSize:12,color:"var(--gray)",textAlign:"center"}}>Default: tennis2026</div>
+        </div>
+      </div>
+    );
+  }
+  return(
+    <div className="page">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <h2 style={{margin:0}}>Admin</h2>
+        <button className="btn btn-secondary btn-sm" onClick={()=>setAuthed(false)}>Logout</button>
+      </div>
+      <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+        {[["scores","Enter Scores"],["roster","Rosters"],["teams","Edit Teams"],["subs","Substitutes"],["settings","Settings"]].map(([id,lbl])=>(
+          <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
+        ))}
+      </div>
+      {tab==="scores"&&<ScoreEntry data={data} setData={setData}/>}
+      {tab==="roster"&&<RosterAdmin data={data} setData={setData}/>}
+      {tab==="teams"&&<TeamsAdmin data={data} setData={setData}/>}
+      {tab==="subs"&&<SubsAdmin data={data} setData={setData}/>}
+      {tab==="settings"&&<Settings data={data} setData={setData}/>}
+    </div>
+  );
+}
+
+function ScoreEntry({data,setData}){
+  const{fixtures,results,teams}=data;
+  const available=fixtures.filter(f=>!results.find(r=>r.round===f.round));
+  const[mode,setMode]=useState("new");
+  const[selRound,setSelRound]=useState(available[0]?.round||null);
+  const[editRound,setEditRound]=useState(results[results.length-1]?.round||null);
+  const[matches,setMatches]=useState([]);
+  const[imageLoading,setImageLoading]=useState(false);
+  const[imageResult,setImageResult]=useState(null);
+  const[msg,setMsg]=useState(null);
+  const fileRef=useRef();
+
+  function initMatches(fixtureRound,existing){
+    return fixtureRound.matches.map(m=>{
+      const ex=existing?.matches.find(r=>r.team1===m.t1&&r.team2===m.t2);
+      const t1=getTeam(teams,m.t1),t2=getTeam(teams,m.t2);
+      return{
+        team1:m.t1,team2:m.t2,
+        roster1:ex?.roster1||[...t1.players],
+        roster2:ex?.roster2||[...t2.players],
+        sets:ex?.sets||["1+2","3+4","1+3","2+4","1+4","2+3"].map(c=>({c,g1:"",g2:""})),
+        pts1:ex?.pts1||0,pts2:ex?.pts2||0,total1:ex?.total1||0,total2:ex?.total2||0,
+      };
+    });
+  }
+
+  useEffect(()=>{
+    const rndNum=mode==="new"?selRound:editRound;
+    const r=fixtures.find(f=>f.round===rndNum);
+    const ex=mode==="edit"?results.find(r2=>r2.round===rndNum):null;
+    if(r)setMatches(initMatches(r,ex));
+  },[selRound,editRound,mode]);
+
+  function updScore(mi,si,field,val){
+    setMatches(prev=>prev.map((m,i)=>{
+      if(i!==mi)return m;
+      const newSets=m.sets.map((s,j)=>j===si?{...s,[field]:val}:s);
+      const filled=newSets.every(s=>s.g1!==""&&s.g2!=="");
+      if(!filled)return{...m,sets:newSets};
+      let setW1=0,setW2=0,g1=0,g2=0;
+      newSets.forEach(s=>{const a=Number(s.g1),b=Number(s.g2);if(a>b)setW1++;else setW2++;g1+=a;g2+=b;});
+      let pts1,pts2;
+      if(setW1>setW2){pts1=setW1+2;pts2=setW2;}
+      else if(setW2>setW1){pts2=setW2+2;pts1=setW1;}
+      else if(g1>g2){pts1=setW1+2;pts2=setW2;}
+      else if(g2>g1){pts2=setW2+2;pts1=setW1;}
+      else{pts1=setW1+1;pts2=setW2+1;}
+      return{...m,sets:newSets,total1:g1,total2:g2,pts1,pts2};
+    }));
+  }
+
+  function updRoster(mi,side,pi,val){
+    setMatches(prev=>prev.map((m,i)=>i!==mi?m:{...m,[side==="1"?"roster1":"roster2"]:m[side==="1"?"roster1":"roster2"].map((p,j)=>j===pi?val:p)}));
+  }
+
+  function handleSave(){
+    const rndNum=mode==="new"?selRound:editRound;
+    const newResult={round:rndNum,matches};
+    const newResults=mode==="new"?[...results,newResult].sort((a,b)=>a.round-b.round):results.map(r=>r.round===rndNum?newResult:r);
+    const updated={...data,results:newResults};
+    setData(updated);saveData(updated);
+    setMsg({type:"success",text:`Round ${rndNum} saved!`});
+    setTimeout(()=>setMsg(null),3000);
+  }
+
+  async function handleImage(e){
+    const file=e.target.files[0];
+    if(!file||!data.anthropicKey){setMsg({type:"error",text:"Set your Anthropic API key in Settings first."});return;}
+    setImageLoading(true);setMsg(null);
+    try{
+      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(file);});
+      const resp=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"x-api-key":data.anthropicKey,"anthropic-version":"2023-06-01","content-type":"application/json","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-opus-4-6",max_tokens:2048,messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:file.type||"image/jpeg",data:b64}},
+          {type:"text",text:`Extract tennis scoresheet data. Return ONLY a JSON array of match objects, each with:
+- team1Name, team2Name (strings)
+- roster1, roster2 (arrays of 4 player name strings)
+- sets: array of 6 objects [{c:"1+2",g1:number,g2:number},{c:"3+4",...},{c:"1+3",...},{c:"2+4",...},{c:"1+4",...},{c:"2+3",...}]
+  where g1=team1 games, g2=team2 games for that combination
+- total1, total2 (total games), pts1, pts2 (competition points)
+Return ONLY the JSON array, no other text.`}
+        ]}]})
+      });
+      const json=await resp.json();
+      const text=json.content?.[0]?.text||"";
+      setImageResult(JSON.parse(text.trim()));
+      setMsg({type:"success",text:"✅ Scores extracted! Click Apply to fill in the form."});
+    }catch(ex){setMsg({type:"error",text:`Error: ${ex.message}`});}
+    finally{setImageLoading(false);if(fileRef.current)fileRef.current.value="";}
+  }
+
+  function applyImage(){
+    if(!imageResult)return;
+    setMatches(prev=>prev.map(m=>{
+      const t1n=teamName(getTeam(teams,m.team1)).toLowerCase();
+      const found=imageResult.find(r=>{
+        const r1=r.team1Name?.toLowerCase()||"",r2=r.team2Name?.toLowerCase()||"";
+        return r1.includes(t1n.replace("team ",""))||t1n.includes(r1.replace("team ",""))||r2.includes(t1n.replace("team ",""))||t1n.includes(r2.replace("team ",""));
+      });
+      if(!found)return m;
+      const flip=!(found.team1Name?.toLowerCase().includes(t1n.replace("team ","")));
+      return{...m,
+        roster1:flip?found.roster2:found.roster1||m.roster1,
+        roster2:flip?found.roster1:found.roster2||m.roster2,
+        sets:found.sets||m.sets,
+        total1:flip?found.total2:found.total1,total2:flip?found.total1:found.total2,
+        pts1:flip?found.pts2:found.pts1,pts2:flip?found.pts1:found.pts2,
+      };
+    }));
+    setImageResult(null);setMsg({type:"success",text:"Applied. Review then save."});
+  }
+
+  const rndNum=mode==="new"?selRound:editRound;
+  const round=fixtures.find(f=>f.round===rndNum);
+
+  return(
+    <div>
+      <div className="card">
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <button className={`btn btn-sm ${mode==="new"?"btn-primary":"btn-secondary"}`} onClick={()=>setMode("new")}>New Round</button>
+          <button className={`btn btn-sm ${mode==="edit"?"btn-primary":"btn-secondary"}`} onClick={()=>setMode("edit")}>Edit Existing</button>
+        </div>
+        {mode==="new"?(
+          <div className="form-group">
+            <label>Select Round</label>
+            <select value={selRound||""} onChange={e=>setSelRound(Number(e.target.value))}>
+              {available.map(f=><option key={f.round} value={f.round}>Round {f.round} – {fmtDate(f.date)}</option>)}
+            </select>
+          </div>
+        ):(
+          <div className="form-group">
+            <label>Select Round to Edit</label>
+            <select value={editRound||""} onChange={e=>setEditRound(Number(e.target.value))}>
+              {results.map(r=><option key={r.round} value={r.round}>Round {r.round}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {data.anthropicKey&&(
+        <div className="card">
+          <h3 style={{marginBottom:8}}>📷 Upload Score Sheet Photo</h3>
+          <div className="upload-zone" onClick={()=>fileRef.current?.click()}>
+            <input ref={fileRef} type="file" accept="image/*" onChange={handleImage}/>
+            {imageLoading?<div><div style={{fontSize:24}}>⏳</div><div style={{marginTop:8,color:"var(--gray)"}}>Reading scores with AI...</div></div>:(
+              <div><div style={{fontSize:32}}>📷</div><div style={{fontWeight:700,marginTop:8,color:"#e6edf3"}}>Tap to upload score sheet</div><div style={{fontSize:12,color:"var(--gray)",marginTop:4}}>Claude reads the scores automatically</div></div>
+            )}
+          </div>
+          {imageResult&&<button className="btn btn-green" style={{width:"100%",marginTop:8}} onClick={applyImage}>Apply Extracted Scores →</button>}
+        </div>
+      )}
+      {!data.anthropicKey&&<div className="alert alert-info">💡 Add your Anthropic API key in Settings to enable photo score entry.</div>}
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+      {!round&&<div className="card" style={{textAlign:"center",color:"var(--gray)",padding:20}}>All rounds have results. Use "Edit Existing" to make changes.</div>}
+
+      {matches.map((m,mi)=>{
+        const t1=getTeam(teams,m.team1),t2=getTeam(teams,m.team2);
+        const filled=m.sets.every(s=>s.g1!==""&&s.g2!=="");
+        return(
+          <div key={mi} className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <h3 style={{margin:0}}>{teamName(t1)} vs {teamName(t2)}</h3>
+              {filled&&<span style={{fontWeight:900,color:"var(--green-dark)"}}>{m.pts1}–{m.pts2}</span>}
+            </div>
+            <div className="grid-2" style={{marginBottom:12}}>
+              {[[t1,m.team1,"1"],[t2,m.team2,"2"]].map(([t,tid,side])=>(
+                <div key={side}>
+                  <label style={{color:"var(--green-dark)"}}>{teamName(t)} Roster</label>
+                  {(side==="1"?m.roster1:m.roster2).map((p,pi)=>(
+                    <div key={pi} style={{marginBottom:4}}>
+                      <input value={p} onChange={e=>updRoster(mi,side,pi,e.target.value)} placeholder={`Player ${pi+1}`} style={{fontSize:13}}/>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:280}}>
+                <thead><tr><th>Combo</th><th style={{textAlign:"center"}}>{teamName(t1)}</th><th style={{textAlign:"center"}}>{teamName(t2)}</th><th style={{textAlign:"center",width:70}}>Winner</th></tr></thead>
+                <tbody>
+                  {m.sets.map((s,si)=>{
+                    const g1=Number(s.g1),g2=Number(s.g2);
+                    const w=s.g1!==""&&s.g2!==""?(g1>g2?teamName(t1):g2>g1?teamName(t2):""):"";
+                    return(
+                      <tr key={si}>
+                        <td style={{fontWeight:800,fontSize:13}}>{s.c}</td>
+                        <td style={{padding:"3px 6px"}}><input type="number" min="0" max="9" value={s.g1} onChange={e=>updScore(mi,si,"g1",e.target.value)} style={{textAlign:"center",padding:4}}/></td>
+                        <td style={{padding:"3px 6px"}}><input type="number" min="0" max="9" value={s.g2} onChange={e=>updScore(mi,si,"g2",e.target.value)} style={{textAlign:"center",padding:4}}/></td>
+                        <td style={{textAlign:"center",fontSize:11,fontWeight:800,color:w===teamName(t1)?"var(--green-dark)":w?"var(--red)":"var(--gray)"}}>{w?`✓ ${w.split(" ")[1]}`:""}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {filled&&<tfoot><tr style={{background:"#21262d"}}><td style={{fontWeight:800,color:"#e6edf3"}}>Total</td><td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{m.total1}</td><td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{m.total2}</td><td style={{textAlign:"center",fontWeight:900,color:"#3fb950"}}>{m.pts1}–{m.pts2}</td></tr></tfoot>}
+              </table>
+            </div>
+          </div>
+        );
+      })}
+      {round&&<button className="btn btn-primary" style={{width:"100%",padding:14,fontSize:16,marginTop:4}} onClick={handleSave}>💾 Save Round {rndNum} Results</button>}
+    </div>
+  );
+}
+
+function RosterAdmin({data,setData}){
+  const{fixtures,results,teams}=data;
+  const nextRound=fixtures.find(f=>!results.find(r=>r.round===f.round));
+  const[selRound,setSelRound]=useState(nextRound?.round||fixtures[0]?.round);
+  const[rosters,setRosters]=useState({});
+  const[msg,setMsg]=useState(null);
+  const round=fixtures.find(f=>f.round===selRound);
+  useEffect(()=>{
+    const r=fixtures.find(f=>f.round===selRound);
+    if(!r)return;
+    const existing=data.results.find(res=>res.round===selRound);
+    const init={};
+    r.matches.forEach(m=>{
+      const ex=existing?.matches.find(mr=>mr.team1===m.t1&&mr.team2===m.t2);
+      init[`${m.t1}`]=ex?.roster1||[...getTeam(teams,m.t1).players];
+      init[`${m.t2}`]=ex?.roster2||[...getTeam(teams,m.t2).players];
+    });
+    setRosters(init);
+  },[selRound]);
+
+  const byeTeam=round?getTeam(teams,round.bye):{players:[]};
+
+  function setPlayer(tid,idx,val){
+    setRosters(prev=>{const arr=[...(prev[tid]||["","","",""])];arr[idx]=val;return{...prev,[tid]:arr};});
+  }
+
+  function handleSave(){
+    const newRosters={...(data.rosters||{}),[selRound]:rosters};
+    const updated={...data,rosters:newRosters};setData(updated);saveData(updated);
+    setMsg({type:"success",text:"Roster saved!"});setTimeout(()=>setMsg(null),3000);
+  }
+
+  function genAnnouncement(){
+    if(!round)return;
+    let txt=`🎾 Berwick TC – Men's Night Comp\nRound ${round.round} – ${fmtDate(round.date)}\n\n`;
+    round.matches.forEach(m=>{
+      const t1=getTeam(teams,m.t1),t2=getTeam(teams,m.t2);
+      const r1=rosters[`${m.t1}`]||t1.players;
+      const r2=rosters[`${m.t2}`]||t2.players;
+      txt+=`${teamName(t1)} vs ${teamName(t2)}\n`;
+      r1.forEach((p,i)=>txt+=`  ${teamName(t1)} Pos ${i+1}: ${p}${isSub(teams,p,m.t1)?" ⭐ sub":""}\n`);
+      r2.forEach((p,i)=>txt+=`  ${teamName(t2)} Pos ${i+1}: ${p}${isSub(teams,p,m.t2)?" ⭐ sub":""}\n`);
+      txt+="\n";
+    });
+    txt+=`Bye: ${tName(teams,round.bye)}`;
+    navigator.clipboard?.writeText(txt);
+    setMsg({type:"success",text:"Announcement copied to clipboard! Paste into WhatsApp/email."});
+    setTimeout(()=>setMsg(null),4000);
+  }
+
+  return(
+    <div>
+      <div className="card">
+        <div className="form-group">
+          <label>Round</label>
+          <select value={selRound||""} onChange={e=>setSelRound(Number(e.target.value))}>
+            {fixtures.map(f=><option key={f.round} value={f.round}>Round {f.round} – {fmtDate(f.date)}</option>)}
+          </select>
+        </div>
+        {round&&<div style={{fontSize:12,color:"var(--gray)"}}>Bye team: <strong>{tName(teams,round.bye)}</strong> (their players available as subs)</div>}
+      </div>
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      {round&&round.matches.map(m=>{
+        const t1=getTeam(teams,m.t1),t2=getTeam(teams,m.t2);
+        return(
+          <div key={`${m.t1}-${m.t2}`} className="card">
+            <h3 style={{marginBottom:10}}>{teamName(t1)} vs {teamName(t2)}</h3>
+            <div className="grid-2">
+              {[[t1,m.t1],[t2,m.t2]].map(([t,tid])=>{
+                const roster=rosters[`${tid}`]||[...t.players];
+                return(
+                  <div key={tid}>
+                    <label style={{color:"var(--green-dark)",marginBottom:6}}>{teamName(t)}</label>
+                    {[0,1,2,3].map(pi=>{
+                      const p=roster[pi]||"";
+                      const sub=p&&isSub(teams,p,tid);
+                      return(
+                        <div key={pi} style={{marginBottom:6}}>
+                          <div style={{fontSize:11,color:"var(--gray)",marginBottom:2}}>Pos {pi+1}</div>
+                          <select value={p} onChange={e=>setPlayer(`${tid}`,pi,e.target.value)}
+                            style={{fontSize:13,borderColor:sub?"var(--gold)":"var(--gray-border)"}}>
+                            <option value="">– select –</option>
+                            <optgroup label="Team Players">{t.players.map(pl=><option key={pl} value={pl}>{pl}</option>)}</optgroup>
+                            <optgroup label={`Bye – ${teamName(byeTeam)}`}>{byeTeam.players.map(pl=><option key={pl} value={pl}>{pl}</option>)}</optgroup>
+                            <optgroup label="Casual Subs">{data.casualSubs.map(pl=><option key={pl} value={pl}>{pl}</option>)}</optgroup>
+                          </select>
+                          {sub&&<span className="sub-badge">SUB</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn btn-primary" style={{flex:1,padding:12}} onClick={handleSave}>💾 Save Rosters</button>
+        <button className="btn btn-secondary" style={{flex:1,padding:12}} onClick={genAnnouncement}>📋 Copy Announcement</button>
+      </div>
+    </div>
+  );
+}
+
+function TeamsAdmin({data,setData}){
+  const[teams,setTeams]=useState(()=>data.teams.map(t=>({...t,players:[...t.players]})));
+  const[msg,setMsg]=useState(null);
+  function save(){const updated={...data,teams};setData(updated);saveData(updated);setMsg({type:"success",text:"Teams saved!"});setTimeout(()=>setMsg(null),3000);}
+  return(
+    <div>
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      {teams.map((t,ti)=>(
+        <div key={t.id} className="card">
+          <div style={{fontWeight:800,color:"#e6edf3",marginBottom:10,fontSize:14}}>
+            {teamName(t)} <span style={{color:"var(--gray)",fontWeight:400,fontSize:12}}>(Team {t.id})</span>
+          </div>
+          {t.players.map((p,pi)=>(
+            <div key={pi} style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+              <span style={{fontSize:12,color:"var(--gray)",width:50,flexShrink:0}}>Pos {pi+1}</span>
+              <input value={p} onChange={e=>setTeams(prev=>prev.map((x,i)=>i!==ti?x:{...x,players:x.players.map((pp,j)=>j===pi?e.target.value:pp)}))} style={{fontSize:13}}/>
+            </div>
+          ))}
+        </div>
+      ))}
+      <button className="btn btn-primary" style={{width:"100%",padding:12}} onClick={save}>💾 Save Teams</button>
+    </div>
+  );
+}
+
+function SubsAdmin({data,setData}){
+  const[subs,setSubs]=useState([...data.casualSubs]);
+  const[newSub,setNewSub]=useState("");
+  const[msg,setMsg]=useState(null);
+  function add(){if(!newSub.trim())return;setSubs(p=>[...p,newSub.trim()]);setNewSub("");}
+  function save(){const updated={...data,casualSubs:subs};setData(updated);saveData(updated);setMsg({type:"success",text:"Saved!"});setTimeout(()=>setMsg(null),3000);}
+  return(
+    <div>
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      <div className="card">
+        <h3 style={{marginBottom:10}}>Casual Substitutes</h3>
+        {subs.map((s,i)=>(
+          <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+            <input value={s} onChange={e=>setSubs(p=>p.map((x,j)=>j===i?e.target.value:x))} style={{fontSize:13}}/>
+            <button className="btn btn-danger btn-sm" onClick={()=>setSubs(p=>p.filter((_,j)=>j!==i))}>✕</button>
+          </div>
+        ))}
+        <div style={{display:"flex",gap:8,marginTop:10}}>
+          <input value={newSub} onChange={e=>setNewSub(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Add substitute name" style={{fontSize:13}}/>
+          <button className="btn btn-green btn-sm" onClick={add}>Add</button>
+        </div>
+      </div>
+      <button className="btn btn-primary" style={{width:"100%",padding:12}} onClick={save}>💾 Save</button>
+    </div>
+  );
+}
+
+function Settings({data,setData}){
+  const[pw,setPw]=useState(data.adminPassword);
+  const[key,setKey]=useState(data.anthropicKey||"");
+  const[msg,setMsg]=useState(null);
+  const importRef=useRef();
+
+  function save(){const updated={...data,adminPassword:pw,anthropicKey:key};setData(updated);saveData(updated);setMsg({type:"success",text:"Settings saved!"});setTimeout(()=>setMsg(null),3000);}
+
+  function exportData(){
+    const json=JSON.stringify(data,null,2);
+    const blob=new Blob([json],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`btc-data-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setMsg({type:"success",text:"Data exported! Save this file as a backup."});
+    setTimeout(()=>setMsg(null),4000);
+  }
+
+  function importData(e){
+    const file=e.target.files[0];
+    if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const parsed=JSON.parse(ev.target.result);
+        if(!parsed.teams||!parsed.fixtures)throw new Error("Invalid data file");
+        setData(parsed);saveData(parsed);
+        setMsg({type:"success",text:"Data imported successfully!"});
+        setTimeout(()=>setMsg(null),3000);
+      }catch(err){setMsg({type:"error",text:"Import failed: "+err.message});}
+    };
+    reader.readAsText(file);
+    if(importRef.current)importRef.current.value="";
+  }
+
+  return(
+    <div>
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+
+      {/* Export / Import */}
+      <div className="card" style={{border:"2px solid var(--navy-border)"}}>
+        <h3 style={{marginBottom:4}}>💾 Backup &amp; Restore</h3>
+        <div style={{fontSize:12,color:"var(--gray)",marginBottom:12}}>Export your data as a file. Import to restore from a backup — useful if you ever clear your browser or switch devices.</div>
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn btn-primary" style={{flex:1}} onClick={exportData}>⬇️ Export Data</button>
+          <button className="btn btn-secondary" style={{flex:1}} onClick={()=>importRef.current?.click()}>⬆️ Import Data</button>
+          <input ref={importRef} type="file" accept=".json" style={{display:"none"}} onChange={importData}/>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="form-group">
+          <label>Admin Password</label>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)}/>
+        </div>
+        <div className="form-group">
+          <label>Anthropic API Key <span className="badge badge-gold">Enables photo score entry</span></label>
+          <input type="password" value={key} onChange={e=>setKey(e.target.value)} placeholder="sk-ant-api..."/>
+          <div style={{fontSize:12,color:"var(--gray)",marginTop:4}}>Get at <strong>console.anthropic.com</strong> → API Keys. Free $5 credit to start.</div>
+        </div>
+        <button className="btn btn-primary" style={{width:"100%",padding:12}} onClick={save}>💾 Save Settings</button>
+      </div>
+      <div className="card" style={{border:"1px solid #6e1a1a",background:"#1a0a0a"}}>
+        <h3 style={{color:"var(--red)",marginBottom:8}}>Danger Zone</h3>
+        <button className="btn btn-danger" style={{width:"100%"}} onClick={()=>{if(!confirm("Reset ALL data to defaults?"))return;const f=JSON.parse(JSON.stringify(SEED));setData(f);saveData(f);setMsg({type:"success",text:"Reset."});}}>Reset All Data</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function App(){
+  const[data,setData]=useState(()=>loadData());
+  const[page,setPage]=useState("home");
+  const[navRound,setNavRound]=useState(null);
+
+  function navigate(p,opts={}){
+    setPage(p);
+    if(opts.round!=null)setNavRound(opts.round);
+  }
+
+  return(
+    <div>
+      <Header page={page} setPage={setPage}/>
+      {page==="home"&&<HomePage data={data}/>}
+      {page==="results"&&<ResultsPage data={data} navRound={navRound} clearNavRound={()=>setNavRound(null)}/>}
+      {page==="stats"&&<StatsPage data={data}/>}
+      {page==="teams"&&<TeamsPage data={data}/>}
+      {page==="fixtures"&&<FixturesPage data={data} navigate={navigate} ladder={calcLadder(data)}/>}
+      {page==="admin"&&<AdminPage data={data} setData={setData}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
