@@ -377,7 +377,25 @@ const SEED = {
        sets:[{c:"1+2",g1:6,g2:3},{c:"3+4",g1:3,g2:6},{c:"1+3",g1:4,g2:6},{c:"2+4",g1:6,g2:5},{c:"1+4",g1:3,g2:6},{c:"2+3",g1:2,g2:6}],
        total1:24,total2:32,pts1:2,pts2:6},
     ]},
-  ]
+  ],
+  finals:{
+    qualifying:{
+      label:"Qualifying Final", date:"2026-06-11", court:"3 & 4",
+      team1:3, team2:1,
+      roster1:["Michael Rominger","David Ng","Eric Castricum","Alan Chumacero"],
+      roster2:["Cooper Khalil","Simran Chawla","Stephen Saunders","Chris Maniatakis"],
+      sets:[{c:"1+2",g1:5,g2:2},{c:"3+4",g1:5,g2:3},{c:"1+3",g1:5,g2:6},{c:"2+4",g1:6,g2:4},{c:"1+4",g1:4,g2:6},{c:"2+3",g1:6,g2:7}],
+      total1:31,total2:28,pts1:5,pts2:3,
+    },
+    elimination:{
+      label:"Elimination Final", date:"2026-06-11", court:"5 & 6",
+      team1:5, team2:4,
+      roster1:["Chung Tan","James Southey","Tom Maloney","Brett Kurz"],
+      roster2:["Jonathan Rogers","Rafa Bouzinelos","David Thurmond","Dishit Devasia"],
+      sets:[{c:"1+2",g1:6,g2:5},{c:"3+4",g1:5,g2:6},{c:"1+3",g1:6,g2:2},{c:"2+4",g1:6,g2:3},{c:"1+4",g1:2,g2:6},{c:"2+3",g1:6,g2:4}],
+      total1:31,total2:26,pts1:6,pts2:2,
+    },
+  }
 };
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
@@ -393,6 +411,28 @@ function teamName(team){if(!team)return"?";const f=team.players[0]?.split(" ")[0
 function tName(teams,id){return teamName(getTeam(teams,id));}
 function fmtDate(iso){if(!iso)return"";const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});}
 function isSub(teams,player,teamId){return!getTeam(teams,teamId).players.includes(player);}
+
+function getFinalsState(data){
+  const f=data.finals; if(!f)return null;
+  const{qualifying:q,elimination:e}=f;
+  const qWinner=q.pts1>q.pts2?q.team1:q.team2;
+  const qLoser=qWinner===q.team1?q.team2:q.team1;
+  const eWinner=e.pts1!=null?(e.pts1>e.pts2?e.team1:e.team2):e.winner;
+  const eLoser=eWinner===e.team1?e.team2:e.team1;
+  return{q,e,qWinner,qLoser,eWinner,eLoser,
+    prelim:{team1:qLoser,team2:eWinner,date:"2026-06-18"},
+    grandFinal:{team1:qWinner,date:"2026-06-25"}};
+}
+
+function calcFinalsLadder(data){
+  const base=calcLadder(data);
+  const fs=getFinalsState(data);
+  if(!fs)return base;
+  const order=[fs.qWinner,fs.eWinner,fs.qLoser,fs.eLoser];
+  const top4=order.map(id=>base.find(t=>t.id===id)).filter(Boolean);
+  const rest=base.filter(t=>!order.includes(t.id));
+  return[...top4,...rest];
+}
 
 function calcLadder(data,upToRound=Infinity){
   const map={};
@@ -499,6 +539,38 @@ function calcPartnerStats(data){
   return Object.values(pairs);
 }
 
+function calcFinalsPlayerStats(data){
+  const finals=data.finals; if(!finals)return[];
+  const matches=[finals.qualifying,finals.elimination].filter(m=>m&&m.sets&&m.sets.length>0);
+  const stats={};
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+  function ensure(name,tid){
+    if(!stats[name])stats[name]={name,teamId:tid,teamName:tName(data.teams,tid),isSub:isSub(data.teams,name,tid),W:0,L:0,gF:0,gA:0};
+    return stats[name];
+  }
+  matches.forEach(m=>{
+    m.sets.forEach((s,si)=>{
+      const combo=s.c||COMBOS[si];
+      const idxs=COMBO_MAP[combo];
+      if(!idxs)return;
+      const[ia,ib]=idxs;
+      const sg1=Number(s.g1)||0, sg2=Number(s.g2)||0;
+      [
+        {name:m.roster1[ia],tid:m.team1,gMe:sg1,gOp:sg2},
+        {name:m.roster1[ib],tid:m.team1,gMe:sg1,gOp:sg2},
+        {name:m.roster2[ia],tid:m.team2,gMe:sg2,gOp:sg1},
+        {name:m.roster2[ib],tid:m.team2,gMe:sg2,gOp:sg1},
+      ].forEach(({name,tid,gMe,gOp})=>{
+        if(!name)return;
+        const st=ensure(name,tid);
+        if(gMe>gOp)st.W++;else if(gOp>gMe)st.L++;
+        st.gF+=gMe;st.gA+=gOp;
+      });
+    });
+  });
+  return Object.values(stats);
+}
+
 function swPct(W,L){if(W+L===0)return null;return W/(W+L);}
 function gwPct(gF,gA){if(gF+gA===0)return null;return gF/(gF+gA);}
 function fmtPct(n){return n===null?"–":Math.round(n*100)+"%";}
@@ -569,32 +641,20 @@ function HomePage({data}){
 
   return(
     <div className="page">
-      {/* Top Team Spotlight */}
-      {topTeamData&&(
-        <div style={{background:`#0d2a0d`,borderRadius:"var(--radius)",padding:16,marginBottom:12,color:"white"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{fontSize:11,fontWeight:800,color:"var(--green-mid)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:2}}>🏆 Current Leaders</div>
-              <div style={{fontSize:22,fontWeight:900}}>{teamName(topTeamData)}</div>
-              <div style={{fontSize:13,color:"rgba(255,255,255,0.7)",marginTop:2}}>{topTeam.Pts} pts · {topTeam.W}W {topTeam.D}D {topTeam.L}L</div>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontSize:32,fontWeight:900,color:"var(--green)"}}>1st</div>
-              <div style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>After Rd {lastRound}</div>
-            </div>
-          </div>
-          <hr style={{border:"none",borderTop:"1px solid rgba(255,255,255,0.1)",margin:"12px 0"}}/>
-          <div style={{fontSize:12,fontWeight:700,color:"var(--green-mid)",marginBottom:6}}>Roster</div>
-          <div className="grid-2">
-            {topTeamData.players.map((p,i)=>(
-              <div key={p} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:22,height:22,borderRadius:"50%",background:"rgba(34,197,94,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,color:"var(--green-mid)",flexShrink:0}}>{i+1}</div>
-                <span style={{fontSize:13,fontWeight:600}}>{p}</span>
-              </div>
-            ))}
-          </div>
+      {/* Finals */}
+      <FinalsCard data={data}/>
+
+      {/* Finals Bracket */}
+      <FinalsBracket data={data}/>
+
+      {/* Ladder Progression */}
+      <div className="card" style={{padding:12}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+          <h3 style={{margin:0}}>Ladder Progression</h3>
+          <span style={{fontSize:11,color:"var(--gray)"}}>Season + Finals</span>
         </div>
-      )}
+        <LadderChart data={data} includeFinals={true}/>
+      </div>
 
       {/* Mini Ladder */}
       <div className="card" style={{padding:0,overflow:"hidden"}}>
@@ -697,14 +757,17 @@ function HomePage({data}){
 }
 
 // ─── LADDER CHART ─────────────────────────────────────────────────────────────
-function LadderChart({data, upToRound}){
+function LadderChart({data, upToRound, includeFinals}){
   const allRounds=[...data.results].sort((a,b)=>a.round-b.round).map(r=>r.round);
   const rounds=upToRound ? allRounds.filter(r=>r<=upToRound) : allRounds;
-  if(rounds.length<2)return<div style={{padding:16,textAlign:"center",color:"var(--gray)",fontSize:13}}>Chart available after 2 rounds with results</div>;
+  const fs=includeFinals?getFinalsState(data):null;
+  const steps=rounds.length+(fs?1:0);
+  if(steps<2)return<div style={{padding:16,textAlign:"center",color:"var(--gray)",fontSize:13}}>Chart available after 2 rounds with results</div>;
   const history=rounds.map(rnd=>calcLadder(data,rnd));
+  if(fs)history.push(calcFinalsLadder(data));
   const W=500,H=175,PAD={t:16,b:20,l:20,r:72};
   const pw=W-PAD.l-PAD.r,ph=H-PAD.t-PAD.b;
-  const xp=i=>PAD.l+i/(rounds.length-1)*pw;
+  const xp=i=>PAD.l+i/(steps-1)*pw;
   const yp=pos=>PAD.t+(pos-1)/6*ph;
   return(
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
@@ -732,6 +795,7 @@ function LadderChart({data, upToRound}){
       {rounds.map((r,i)=>(
         <text key={r} x={xp(i)} y={H-3} fontSize={9} fill="var(--gray)" textAnchor="middle">R{r}</text>
       ))}
+      {fs&&<text x={xp(rounds.length)} y={H-3} fontSize={9} fill="#3fb950" textAnchor="middle" fontWeight={800}>Finals</text>}
     </svg>
   );
 }
@@ -749,6 +813,11 @@ function ResultsPage({data,navRound,clearNavRound}){
 
   return(
     <div className="page">
+      {/* Finals */}
+      <FinalsCard data={data}/>
+      {data.finals&&<FinalsMatchCard m={data.finals.qualifying} teams={teams} label="Qualifying Final"/>}
+      {data.finals&&<FinalsMatchCard m={data.finals.elimination} teams={teams} label="Elimination Final"/>}
+
       {/* Mini ladder */}
       <div className="card" style={{padding:0,overflow:"hidden",marginBottom:12}}>
         <div style={{overflowX:"auto"}}>
@@ -879,6 +948,178 @@ function MatchCard({m,teams}){
   );
 }
 
+// ─── FINALS ───────────────────────────────────────────────────────────────────
+function FinalsCard({data}){
+  const fs=getFinalsState(data);
+  if(!fs)return null;
+  const{q,e,qWinner,qLoser,eWinner,eLoser,prelim,grandFinal}=fs;
+  const teams=data.teams;
+  return(
+    <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d"}}>
+      <h3 style={{color:"#3fb950",marginBottom:8}}>🏆 Finals Series</h3>
+      <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
+        <div style={{fontWeight:800,fontSize:13}}>Qualifying Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(q.date)}</span></div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,q.team1)} def {tName(teams,q.team2)}{q.total1!=null?` ${q.total1}–${q.total2}`:""}</div>
+        <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,qWinner)} go straight through to the Grand Final · {tName(teams,qLoser)} drop to the Preliminary Final</div>
+      </div>
+      <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
+        <div style={{fontWeight:800,fontSize:13}}>Elimination Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(e.date)}</span></div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,eWinner)} def {tName(teams,eLoser)}{e.total1!=null?` ${e.total1}–${e.total2}`:""}</div>
+        <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,eWinner)} advance to the Preliminary Final · {tName(teams,eLoser)} are eliminated</div>
+      </div>
+      <div style={{marginBottom:8}}>
+        <div style={{fontWeight:800,fontSize:13}}>Next Up: Preliminary Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(prelim.date)}</span></div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.team1)} vs {tName(teams,prelim.team2)}</div>
+      </div>
+      <div>
+        <div style={{fontWeight:800,fontSize:13}}>Likely Grand Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(grandFinal.date)}</span></div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,grandFinal.team1)} vs {tName(teams,prelim.team1)}/{tName(teams,prelim.team2)} <span style={{color:"#8b949e",fontSize:11}}>(winner of Preliminary Final)</span></div>
+      </div>
+    </div>
+  );
+}
+
+function FinalsMatchCard({m,teams,label}){
+  const t1=getTeam(teams,m.team1),t2=getTeam(teams,m.team2);
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+  const hasScore=m.sets&&m.sets.length>0;
+  const winnerId=hasScore?(m.pts1>m.pts2?m.team1:m.team2):m.winner;
+  return(
+    <div className="card" style={{padding:0,overflow:"hidden"}}>
+      <div className="result-header">
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.6)",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:6}}>{label} · {fmtDate(m.date)} · Court {m.court}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:800,fontSize:15}}>{teamName(t1)}</div>
+            {hasScore&&<div style={{fontSize:24,fontWeight:900,color:"var(--green)"}}>{m.pts1}</div>}
+          </div>
+          <div style={{textAlign:"center"}}>
+            {hasScore?<>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.6)"}}>pts</div>
+              <div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)"}}>vs</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.5)"}}>{m.total1}–{m.total2} games</div>
+            </>:<div style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.8)"}}>vs</div>}
+          </div>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontWeight:800,fontSize:15}}>{teamName(t2)}</div>
+            {hasScore&&<div style={{fontSize:24,fontWeight:900,color:"var(--green)"}}>{m.pts2}</div>}
+          </div>
+        </div>
+      </div>
+      <div style={{padding:"0 12px"}}>
+        {!hasScore&&(
+          <div style={{padding:"20px",textAlign:"center",color:"#8b949e",fontSize:13}}>
+            🏆 Won by {teamName(getTeam(teams,m.winner))}
+            <div style={{fontSize:11,marginTop:4}}>Set-by-set scores to be added via Admin → Enter Scores</div>
+          </div>
+        )}
+        {hasScore&&m.sets.map((s,i)=>{
+          const combo=s.c||COMBOS[i];
+          const idxs=COMBO_MAP[combo]||[0,1];
+          const p1a=m.roster1[idxs[0]],p1b=m.roster1[idxs[1]];
+          const p2a=m.roster2[idxs[0]],p2b=m.roster2[idxs[1]];
+          const w1=s.g1>s.g2,w2=s.g2>s.g1;
+          return(
+            <div key={i} className="score-pair">
+              <div>
+                <span className="player-name" style={{fontWeight:w1?700:400,color:w1?"#e6edf3":"#8b949e"}}>{p1a}{isSub(teams,p1a,m.team1)&&<span className="sub-badge">SUB</span>}</span>
+                <span className="player-name" style={{fontWeight:w1?700:400,color:w1?"#e6edf3":"#8b949e"}}>{p1b}{isSub(teams,p1b,m.team1)&&<span className="sub-badge">SUB</span>}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
+                <span className={w1?"score-win":"score-lose"} style={{fontSize:20}}>{s.g1}</span>
+                <span className="combo-lbl">{combo}</span>
+                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2a}{isSub(teams,p2a,m.team2)&&<span className="sub-badge">SUB</span>}</span>
+                <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2b}{isSub(teams,p2b,m.team2)&&<span className="sub-badge">SUB</span>}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{padding:"8px 14px",background:"#0d2a0d",fontSize:12,color:"#3fb950",fontWeight:700,borderTop:"1px solid #2d5a2d"}}>
+        🏆 Won by {teamName(getTeam(teams,winnerId))}
+      </div>
+    </div>
+  );
+}
+
+function FinalsBracket({data}){
+  const fs=getFinalsState(data);
+  if(!fs)return null;
+  const teams=data.teams;
+  const{q,e,qWinner,eWinner,prelim,grandFinal}=fs;
+
+  const TeamRow=({id,score,status})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"3px 0",
+      opacity:status==="out"?0.45:1,
+      textDecoration:status==="out"?"line-through":"none"}}>
+      <span style={{fontSize:12,fontWeight:status==="win"?800:500,color:status==="win"?"#3fb950":"#c9d1d9"}}>{tName(teams,id)}</span>
+      {score!=null&&<span style={{fontSize:12,fontWeight:700,color:status==="win"?"#3fb950":"#8b949e"}}>{score}</span>}
+    </div>
+  );
+
+  const Box=({title,date,children})=>(
+    <div style={{background:"#161b22",border:"1px solid #30363d",borderRadius:8,padding:"8px 10px"}}>
+      <div style={{fontSize:9,fontWeight:800,color:"#8b949e",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:4}}>{title}{date?` · ${date}`:""}</div>
+      {children}
+    </div>
+  );
+
+  const Col=({label,children})=>(
+    <div style={{display:"flex",flexDirection:"column",gap:8,flex:"0 0 155px"}}>
+      <div style={{textAlign:"center",fontSize:10,fontWeight:800,color:"#3fb950",textTransform:"uppercase",letterSpacing:"0.05em"}}>{label}</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,justifyContent:"center",flex:1}}>{children}</div>
+    </div>
+  );
+
+  const Arrow=()=>(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",color:"#3fb950",fontSize:18,fontWeight:900,padding:"0 2px",flex:"0 0 auto"}}>→</div>
+  );
+
+  return(
+    <div className="card" style={{padding:12}}>
+      <h3 style={{marginBottom:10}}>Finals Bracket</h3>
+      <div style={{display:"flex",alignItems:"stretch",gap:4,overflowX:"auto",paddingBottom:4}}>
+        <Col label="4 Teams">
+          <Box title="Qualifying Final" date={fmtDate(q.date)}>
+            <TeamRow id={q.team1} score={q.total1} status={qWinner===q.team1?"win":"out"}/>
+            <TeamRow id={q.team2} score={q.total2} status={qWinner===q.team2?"win":"out"}/>
+          </Box>
+          <Box title="Elimination Final" date={fmtDate(e.date)}>
+            <TeamRow id={e.team1} score={e.total1} status={eWinner===e.team1?"win":"out"}/>
+            <TeamRow id={e.team2} score={e.total2} status={eWinner===e.team2?"win":"out"}/>
+          </Box>
+        </Col>
+        <Arrow/>
+        <Col label="3 Teams">
+          <Box title="Through to Grand Final">
+            <TeamRow id={qWinner} status="win"/>
+          </Box>
+          <Box title="Preliminary Final" date={fmtDate(prelim.date)}>
+            <TeamRow id={prelim.team1} status="tbd"/>
+            <TeamRow id={prelim.team2} status="tbd"/>
+          </Box>
+        </Col>
+        <Arrow/>
+        <Col label="2 Teams">
+          <Box title="Grand Final" date={fmtDate(grandFinal.date)}>
+            <TeamRow id={grandFinal.team1} status="win"/>
+            <div style={{fontSize:12,color:"#8b949e",padding:"3px 0"}}>Winner of Prelim</div>
+          </Box>
+        </Col>
+        <Arrow/>
+        <Col label="Premiers">
+          <Box title="Champion">
+            <div style={{fontSize:12,color:"#8b949e",textAlign:"center",padding:"8px 0"}}>TBD</div>
+          </Box>
+        </Col>
+      </div>
+    </div>
+  );
+}
+
 // ─── STATS PAGE ───────────────────────────────────────────────────────────────
 function StatsPage({data}){
   const[tab,setTab]=useState("overall");
@@ -887,6 +1128,8 @@ function StatsPage({data}){
   const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
 
   const allPlayers=useMemo(()=>sortByPerf(playerStats.filter(p=>p.W+p.L>0)),[playerStats]);
+  const finalsPlayerStats=useMemo(()=>calcFinalsPlayerStats(data),[data]);
+  const allFinalsPlayers=useMemo(()=>sortByPerf(finalsPlayerStats.filter(p=>p.W+p.L>0)),[finalsPlayerStats]);
   const allPairs=useMemo(()=>sortByPerf(partnerStats.filter(p=>p.W+p.L>=3)),[partnerStats]);
   const allSubs=useMemo(()=>sortByPerf(playerStats.filter(p=>p.subW+p.subL>0),"subW","subL","subGF","subGA"),[playerStats]);
 
@@ -904,7 +1147,7 @@ function StatsPage({data}){
   return(
     <div className="page">
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {[["overall","Players – Overall"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
+        {[["overall","Players – Season"],["finals","Players – Finals"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
           <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
@@ -912,7 +1155,7 @@ function StatsPage({data}){
       {tab==="overall"&&(
         <div className="card" style={{padding:0,overflow:"hidden"}}>
           <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
-            <h2 style={{margin:0}}>Players – Overall</h2>
+            <h2 style={{margin:0}}>Players – Season</h2>
             <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Ranked by Set Win %, then Game Win %. Includes all players and substitutes.</div>
           </div>
           <div style={{overflowX:"auto"}}>
@@ -933,6 +1176,37 @@ function StatsPage({data}){
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {tab==="finals"&&(
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+            <h2 style={{margin:0}}>Players – Finals</h2>
+            <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Ranked by Set Win %, then Game Win %. Players who have appeared in the finals series so far.</div>
+          </div>
+          {allFinalsPlayers.length===0?(
+            <div style={{padding:24,textAlign:"center",color:"var(--gray)"}}>No finals data yet</div>
+          ):(
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:360}}>
+                <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+                <tbody>
+                  {allFinalsPlayers.map((p,i)=>(
+                    <tr key={p.name}>
+                      <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                      <td style={{fontWeight:700}}>{p.name}{p.isSub&&<span className="sub-badge">SUB</span>}</td>
+                      <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                      <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p.W}</td>
+                      <td style={{textAlign:"center",color:"var(--red)"}}>{p.L}</td>
+                      <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p.W,p.L))}</td>
+                      <td style={{textAlign:"center",fontSize:12,color:"var(--gray)"}}>{fmtPct(gwPct(p.gF,p.gA))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -1174,13 +1448,19 @@ function FixturesPage({data,navigate,ladder=[]}){
         {(()=>{
           const top4=ladder.slice(0,4);
           const n=i=>top4[i]?teamName(getTeam(data.teams,top4[i].id)):`${["1st","2nd","3rd","4th"][i]}`;
-          const finals=[
-            {label:"Elimination & Qualifying",date:"4 Jun 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
-            {label:"Preliminary Final",date:"11 Jun 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
-            {label:"Grand Final",date:"18 Jun 2026",detail:`Winner ${n(0)}/${n(1)} v Winner Prelim`},
+          const fs=getFinalsState(data);
+          const finals=fs?[
+            {label:"Qualifying Final",date:"11 Jun 2026",detail:`${tName(data.teams,fs.q.team1)} def ${tName(data.teams,fs.q.team2)}${fs.q.total1!=null?` ${fs.q.total1}–${fs.q.total2}`:""} — ${tName(data.teams,fs.qWinner)} through to Grand Final`},
+            {label:"Elimination Final",date:"11 Jun 2026",detail:`${tName(data.teams,fs.eWinner)} def ${tName(data.teams,fs.eLoser)}${fs.e.total1!=null?` ${fs.e.total1}–${fs.e.total2}`:""} — through to Preliminary Final`},
+            {label:"Preliminary Final",date:"18 Jun 2026",detail:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
+            {label:"Grand Final",date:"25 Jun 2026",detail:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
+          ]:[
+            {label:"Elimination & Qualifying",date:"11 Jun 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
+            {label:"Preliminary Final",date:"18 Jun 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
+            {label:"Grand Final",date:"25 Jun 2026",detail:`Winner ${n(0)}/${n(1)} v Winner Prelim`},
           ];
           return finals.map((f,i)=>(
-            <div key={i} style={{padding:"8px 0",borderBottom:i<2?"1px solid #2d5a2d":"none"}}>
+            <div key={i} style={{padding:"8px 0",borderBottom:i<finals.length-1?"1px solid #2d5a2d":"none"}}>
               <div style={{fontWeight:800,fontSize:13,color:"#3fb950"}}>{f.label}</div>
               <div style={{fontSize:12,color:"#8b949e"}}>{f.date} · {f.detail}</div>
             </div>
