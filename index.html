@@ -414,21 +414,40 @@ function isSub(teams,player,teamId){return!getTeam(teams,teamId).players.include
 
 function getFinalsState(data){
   const f=data.finals; if(!f)return null;
-  const{qualifying:q,elimination:e}=f;
+  const{qualifying:q,elimination:e,prelim:p,grandFinal:g}=f;
+  if(!q||!e)return null;
   const qWinner=q.pts1>q.pts2?q.team1:q.team2;
   const qLoser=qWinner===q.team1?q.team2:q.team1;
-  const eWinner=e.pts1!=null?(e.pts1>e.pts2?e.team1:e.team2):e.winner;
+  const eWinner=e.pts1>e.pts2?e.team1:e.team2;
   const eLoser=eWinner===e.team1?e.team2:e.team1;
+
+  const prelimTeam1=qLoser, prelimTeam2=eWinner;
+  const prelimPlayed=!!(p&&p.pts1!=null);
+  const prelimWinner=prelimPlayed?(p.pts1>p.pts2?p.team1:p.team2):null;
+  const prelimLoser=prelimPlayed?(prelimWinner===p.team1?p.team2:p.team1):null;
+
+  const gfTeam1=qWinner, gfTeam2=prelimWinner;
+  const gfPlayed=!!(g&&g.pts1!=null);
+  const champion=gfPlayed?(g.pts1>g.pts2?g.team1:g.team2):null;
+  const runnerUp=gfPlayed?(champion===g.team1?g.team2:g.team1):null;
+
   return{q,e,qWinner,qLoser,eWinner,eLoser,
-    prelim:{team1:qLoser,team2:eWinner,date:"2026-06-18"},
-    grandFinal:{team1:qWinner,date:"2026-06-25"}};
+    prelim:{...(p||{}),team1:prelimTeam1,team2:prelimTeam2,date:p?.date||"2026-06-18",played:prelimPlayed,winner:prelimWinner,loser:prelimLoser},
+    grandFinal:{...(g||{}),team1:gfTeam1,team2:gfTeam2,date:g?.date||"2026-06-25",played:gfPlayed,champion,runnerUp}};
 }
 
 function calcFinalsLadder(data){
   const base=calcLadder(data);
   const fs=getFinalsState(data);
   if(!fs)return base;
-  const order=[fs.qWinner,fs.eWinner,fs.qLoser,fs.eLoser];
+  let order;
+  if(fs.grandFinal.played){
+    order=[fs.grandFinal.champion,fs.grandFinal.runnerUp,fs.prelim.loser,fs.eLoser];
+  }else if(fs.prelim.played){
+    order=[fs.qWinner,fs.prelim.winner,fs.prelim.loser,fs.eLoser];
+  }else{
+    order=[fs.qWinner,fs.eWinner,fs.qLoser,fs.eLoser];
+  }
   const top4=order.map(id=>base.find(t=>t.id===id)).filter(Boolean);
   const rest=base.filter(t=>!order.includes(t.id));
   return[...top4,...rest];
@@ -541,7 +560,7 @@ function calcPartnerStats(data){
 
 function calcFinalsPlayerStats(data){
   const finals=data.finals; if(!finals)return[];
-  const matches=[finals.qualifying,finals.elimination].filter(m=>m&&m.sets&&m.sets.length>0);
+  const matches=[finals.qualifying,finals.elimination,finals.prelim,finals.grandFinal].filter(m=>m&&m.sets&&m.sets.length>0&&m.sets.every(s=>s.g1!==""&&s.g2!==""));
   const stats={};
   const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
   function ensure(name,tid){
@@ -954,6 +973,8 @@ function FinalsCard({data}){
   if(!fs)return null;
   const{q,e,qWinner,qLoser,eWinner,eLoser,prelim,grandFinal}=fs;
   const teams=data.teams;
+  const prelimLabel=prelim.played?"Preliminary Final":"Next Up: Preliminary Final";
+  const gfLabel=grandFinal.played?"Grand Final":(grandFinal.team2!=null?"Next Up: Grand Final":"Likely Grand Final");
   return(
     <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d"}}>
       <h3 style={{color:"#3fb950",marginBottom:8}}>🏆 Finals Series</h3>
@@ -967,13 +988,25 @@ function FinalsCard({data}){
         <div style={{fontSize:13,marginTop:2}}>{tName(teams,eWinner)} def {tName(teams,eLoser)}{e.total1!=null?` ${e.total1}–${e.total2}`:""}</div>
         <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,eWinner)} advance to the Preliminary Final · {tName(teams,eLoser)} are eliminated</div>
       </div>
-      <div style={{marginBottom:8}}>
-        <div style={{fontWeight:800,fontSize:13}}>Next Up: Preliminary Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(prelim.date)}</span></div>
-        <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.team1)} vs {tName(teams,prelim.team2)}</div>
+      <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
+        <div style={{fontWeight:800,fontSize:13}}>{prelimLabel} <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(prelim.date)}</span></div>
+        {prelim.played?(<>
+          <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.winner)} def {tName(teams,prelim.loser)}{prelim.total1!=null?` ${prelim.total1}–${prelim.total2}`:""}</div>
+          <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,prelim.winner)} advance to the Grand Final · {tName(teams,prelim.loser)} are eliminated</div>
+        </>):(
+          <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.team1)} vs {tName(teams,prelim.team2)}</div>
+        )}
       </div>
       <div>
-        <div style={{fontWeight:800,fontSize:13}}>Likely Grand Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(grandFinal.date)}</span></div>
-        <div style={{fontSize:13,marginTop:2}}>{tName(teams,grandFinal.team1)} vs {tName(teams,prelim.team1)}/{tName(teams,prelim.team2)} <span style={{color:"#8b949e",fontSize:11}}>(winner of Preliminary Final)</span></div>
+        <div style={{fontWeight:800,fontSize:13}}>{gfLabel} <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(grandFinal.date)}</span></div>
+        {grandFinal.played?(<>
+          <div style={{fontSize:13,marginTop:2}}>🏆 {tName(teams,grandFinal.champion)} def {tName(teams,grandFinal.runnerUp)}{grandFinal.total1!=null?` ${grandFinal.total1}–${grandFinal.total2}`:""}</div>
+          <div style={{fontSize:11,color:"#3fb950",fontWeight:700,marginTop:2}}>{tName(teams,grandFinal.champion)} are the 2026 Autumn Premiers!</div>
+        </>):grandFinal.team2!=null?(
+          <div style={{fontSize:13,marginTop:2}}>{tName(teams,grandFinal.team1)} vs {tName(teams,grandFinal.team2)}</div>
+        ):(
+          <div style={{fontSize:13,marginTop:2}}>{tName(teams,grandFinal.team1)} vs {tName(teams,prelim.team1)}/{tName(teams,prelim.team2)} <span style={{color:"#8b949e",fontSize:11}}>(winner of Preliminary Final)</span></div>
+        )}
       </div>
     </div>
   );
@@ -1098,21 +1131,38 @@ function FinalsBracket({data}){
             <TeamRow id={qWinner} status="win"/>
           </Box>
           <Box title="Preliminary Final" date={fmtDate(prelim.date)}>
-            <TeamRow id={prelim.team1} status="tbd"/>
-            <TeamRow id={prelim.team2} status="tbd"/>
+            {prelim.played?(<>
+              <TeamRow id={prelim.team1} score={prelim.total1} status={prelim.winner===prelim.team1?"win":"out"}/>
+              <TeamRow id={prelim.team2} score={prelim.total2} status={prelim.winner===prelim.team2?"win":"out"}/>
+            </>):(<>
+              <TeamRow id={prelim.team1} status="tbd"/>
+              <TeamRow id={prelim.team2} status="tbd"/>
+            </>)}
           </Box>
         </Col>
         <Arrow/>
         <Col label="2 Teams">
           <Box title="Grand Final" date={fmtDate(grandFinal.date)}>
-            <TeamRow id={grandFinal.team1} status="win"/>
-            <div style={{fontSize:12,color:"#8b949e",padding:"3px 0"}}>Winner of Prelim</div>
+            {grandFinal.played?(<>
+              <TeamRow id={grandFinal.team1} score={grandFinal.total1} status={grandFinal.champion===grandFinal.team1?"win":"out"}/>
+              <TeamRow id={grandFinal.team2} score={grandFinal.total2} status={grandFinal.champion===grandFinal.team2?"win":"out"}/>
+            </>):grandFinal.team2!=null?(<>
+              <TeamRow id={grandFinal.team1} status="win"/>
+              <TeamRow id={grandFinal.team2} status="tbd"/>
+            </>):(<>
+              <TeamRow id={grandFinal.team1} status="win"/>
+              <div style={{fontSize:12,color:"#8b949e",padding:"3px 0"}}>Winner of Prelim</div>
+            </>)}
           </Box>
         </Col>
         <Arrow/>
         <Col label="Premiers">
           <Box title="Champion">
-            <div style={{fontSize:12,color:"#8b949e",textAlign:"center",padding:"8px 0"}}>TBD</div>
+            {grandFinal.played?(
+              <div style={{fontSize:13,fontWeight:800,color:"#3fb950",textAlign:"center",padding:"8px 0"}}>🏆 {tName(teams,grandFinal.champion)}</div>
+            ):(
+              <div style={{fontSize:12,color:"#8b949e",textAlign:"center",padding:"8px 0"}}>TBD</div>
+            )}
           </Box>
         </Col>
       </div>
@@ -1450,10 +1500,10 @@ function FixturesPage({data,navigate,ladder=[]}){
           const n=i=>top4[i]?teamName(getTeam(data.teams,top4[i].id)):`${["1st","2nd","3rd","4th"][i]}`;
           const fs=getFinalsState(data);
           const finals=fs?[
-            {label:"Qualifying Final",date:"11 Jun 2026",detail:`${tName(data.teams,fs.q.team1)} def ${tName(data.teams,fs.q.team2)}${fs.q.total1!=null?` ${fs.q.total1}–${fs.q.total2}`:""} — ${tName(data.teams,fs.qWinner)} through to Grand Final`},
-            {label:"Elimination Final",date:"11 Jun 2026",detail:`${tName(data.teams,fs.eWinner)} def ${tName(data.teams,fs.eLoser)}${fs.e.total1!=null?` ${fs.e.total1}–${fs.e.total2}`:""} — through to Preliminary Final`},
-            {label:"Preliminary Final",date:"18 Jun 2026",detail:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
-            {label:"Grand Final",date:"25 Jun 2026",detail:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
+            {label:"Qualifying Final",date:fmtDate(fs.q.date),detail:`${tName(data.teams,fs.q.team1)} def ${tName(data.teams,fs.q.team2)}${fs.q.total1!=null?` ${fs.q.total1}–${fs.q.total2}`:""} — ${tName(data.teams,fs.qWinner)} through to Grand Final`},
+            {label:"Elimination Final",date:fmtDate(fs.e.date),detail:`${tName(data.teams,fs.eWinner)} def ${tName(data.teams,fs.eLoser)}${fs.e.total1!=null?` ${fs.e.total1}–${fs.e.total2}`:""} — through to Preliminary Final`},
+            {label:"Preliminary Final",date:fmtDate(fs.prelim.date),detail:fs.prelim.played?`${tName(data.teams,fs.prelim.winner)} def ${tName(data.teams,fs.prelim.loser)}${fs.prelim.total1!=null?` ${fs.prelim.total1}–${fs.prelim.total2}`:""} — through to Grand Final`:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
+            {label:"Grand Final",date:fmtDate(fs.grandFinal.date),detail:fs.grandFinal.played?`🏆 ${tName(data.teams,fs.grandFinal.champion)} def ${tName(data.teams,fs.grandFinal.runnerUp)}${fs.grandFinal.total1!=null?` ${fs.grandFinal.total1}–${fs.grandFinal.total2}`:""} — Premiers!`:fs.grandFinal.team2!=null?`${tName(data.teams,fs.grandFinal.team1)} v ${tName(data.teams,fs.grandFinal.team2)}`:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
           ]:[
             {label:"Elimination & Qualifying",date:"11 Jun 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
             {label:"Preliminary Final",date:"18 Jun 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
@@ -1502,11 +1552,12 @@ function AdminPage({data,setData}){
         <button className="btn btn-secondary btn-sm" onClick={()=>setAuthed(false)}>Logout</button>
       </div>
       <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
-        {[["scores","Enter Scores"],["roster","Rosters"],["teams","Edit Teams"],["subs","Substitutes"],["settings","Settings"]].map(([id,lbl])=>(
+        {[["scores","Enter Scores"],["finals","Finals Scores"],["roster","Rosters"],["teams","Edit Teams"],["subs","Substitutes"],["settings","Settings"]].map(([id,lbl])=>(
           <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
       {tab==="scores"&&<ScoreEntry data={data} setData={setData}/>}
+      {tab==="finals"&&<FinalsScoreEntry data={data} setData={setData}/>}
       {tab==="roster"&&<RosterAdmin data={data} setData={setData}/>}
       {tab==="teams"&&<TeamsAdmin data={data} setData={setData}/>}
       {tab==="subs"&&<SubsAdmin data={data} setData={setData}/>}
@@ -1718,6 +1769,150 @@ Return ONLY the JSON array, no other text.`}
         );
       })}
       {round&&<button className="btn btn-primary" style={{width:"100%",padding:14,fontSize:16,marginTop:4}} onClick={handleSave}>💾 Save Round {rndNum} Results</button>}
+    </div>
+  );
+}
+
+function FinalsScoreEntry({data,setData}){
+  const{teams}=data;
+  const STAGES=[
+    {key:"qualifying",label:"Qualifying Final"},
+    {key:"elimination",label:"Elimination Final"},
+    {key:"prelim",label:"Preliminary Final"},
+    {key:"grandFinal",label:"Grand Final"},
+  ];
+  const[stage,setStage]=useState("qualifying");
+  const[msg,setMsg]=useState(null);
+  const fs=getFinalsState(data);
+
+  function teamsForStage(stageKey){
+    if(stageKey==="qualifying")return[data.finals.qualifying?.team1,data.finals.qualifying?.team2];
+    if(stageKey==="elimination")return[data.finals.elimination?.team1,data.finals.elimination?.team2];
+    if(stageKey==="prelim")return[fs?.prelim?.team1,fs?.prelim?.team2];
+    if(stageKey==="grandFinal")return[fs?.grandFinal?.team1,fs?.grandFinal?.team2];
+    return[null,null];
+  }
+
+  function initMatch(stageKey){
+    const existing=data.finals[stageKey];
+    const[team1,team2]=teamsForStage(stageKey);
+    if(team1==null||team2==null)return null;
+    const t1=getTeam(teams,team1),t2=getTeam(teams,team2);
+    const defDate=stageKey==="prelim"?"2026-06-18":stageKey==="grandFinal"?"2026-06-25":existing?.date;
+    return{
+      team1,team2,
+      label:existing?.label||STAGES.find(s=>s.key===stageKey).label,
+      date:existing?.date||defDate,
+      court:existing?.court||"",
+      roster1:existing?.roster1||[...t1.players],
+      roster2:existing?.roster2||[...t2.players],
+      sets:existing?.sets||["1+2","3+4","1+3","2+4","1+4","2+3"].map(c=>({c,g1:"",g2:""})),
+      pts1:existing?.pts1||0,pts2:existing?.pts2||0,total1:existing?.total1||0,total2:existing?.total2||0,
+    };
+  }
+
+  const[m,setM]=useState(()=>initMatch(stage));
+  useEffect(()=>{setM(initMatch(stage));},[stage,data]);
+
+  function updScore(si,field,val){
+    setM(prev=>{
+      const newSets=prev.sets.map((s,j)=>j===si?{...s,[field]:val}:s);
+      const filled=newSets.every(s=>s.g1!==""&&s.g2!=="");
+      if(!filled)return{...prev,sets:newSets};
+      let setW1=0,setW2=0,g1=0,g2=0;
+      newSets.forEach(s=>{const a=Number(s.g1),b=Number(s.g2);if(a>b)setW1++;else setW2++;g1+=a;g2+=b;});
+      let pts1,pts2;
+      if(setW1>setW2){pts1=setW1+2;pts2=setW2;}
+      else if(setW2>setW1){pts2=setW2+2;pts1=setW1;}
+      else if(g1>g2){pts1=setW1+2;pts2=setW2;}
+      else if(g2>g1){pts2=setW2+2;pts1=setW1;}
+      else{pts1=setW1+1;pts2=setW2+1;}
+      return{...prev,sets:newSets,total1:g1,total2:g2,pts1,pts2};
+    });
+  }
+
+  function updRoster(side,pi,val){
+    setM(prev=>({...prev,[side==="1"?"roster1":"roster2"]:prev[side==="1"?"roster1":"roster2"].map((p,j)=>j===pi?val:p)}));
+  }
+
+  function handleSave(){
+    const newFinals={...data.finals,[stage]:{...m}};
+    const updated={...data,finals:newFinals};
+    setData(updated);saveData(updated);
+    setMsg({type:"success",text:`${m.label} saved!`});
+    setTimeout(()=>setMsg(null),3000);
+  }
+
+  return(
+    <div>
+      <div className="card">
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {STAGES.map(s=>(
+            <button key={s.key} className={`btn btn-sm ${stage===s.key?"btn-primary":"btn-secondary"}`} onClick={()=>setStage(s.key)}>{s.label}</button>
+          ))}
+        </div>
+      </div>
+      {msg&&<div className={`alert alert-${msg.type}`}>{msg.text}</div>}
+      {!m&&(
+        <div className="card" style={{textAlign:"center",color:"var(--gray)",padding:20}}>
+          {stage==="grandFinal"?"Grand Final teams aren't determined yet — enter the Preliminary Final result first.":"This stage isn't ready yet."}
+        </div>
+      )}
+      {m&&(()=>{
+        const t1=getTeam(teams,m.team1),t2=getTeam(teams,m.team2);
+        const filled=m.sets.every(s=>s.g1!==""&&s.g2!=="");
+        return(
+          <div className="card">
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <h3 style={{margin:0}}>{teamName(t1)} vs {teamName(t2)}</h3>
+              {filled&&<span style={{fontWeight:900,color:"var(--green-dark)"}}>{m.pts1}–{m.pts2}</span>}
+            </div>
+            <div className="grid-2" style={{gap:12,marginBottom:12}}>
+              <div className="form-group" style={{marginBottom:0}}>
+                <label>Date</label>
+                <input type="date" value={m.date||""} onChange={e=>setM(prev=>({...prev,date:e.target.value}))}/>
+              </div>
+              <div className="form-group" style={{marginBottom:0}}>
+                <label>Court</label>
+                <input value={m.court||""} onChange={e=>setM(prev=>({...prev,court:e.target.value}))} placeholder="e.g. 3 & 4"/>
+              </div>
+            </div>
+            <div className="grid-2" style={{marginBottom:12}}>
+              {[[t1,m.team1,"1"],[t2,m.team2,"2"]].map(([t,tid,side])=>(
+                <div key={side}>
+                  <label style={{color:"var(--green-dark)"}}>{teamName(t)} Roster</label>
+                  {(side==="1"?m.roster1:m.roster2).map((p,pi)=>(
+                    <div key={pi} style={{marginBottom:4}}>
+                      <input value={p} onChange={e=>updRoster(side,pi,e.target.value)} placeholder={`Player ${pi+1}`} style={{fontSize:13}}/>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:280}}>
+                <thead><tr><th>Combo</th><th style={{textAlign:"center"}}>{teamName(t1)}</th><th style={{textAlign:"center"}}>{teamName(t2)}</th><th style={{textAlign:"center",width:70}}>Winner</th></tr></thead>
+                <tbody>
+                  {m.sets.map((s,si)=>{
+                    const g1=Number(s.g1),g2=Number(s.g2);
+                    const w=s.g1!==""&&s.g2!==""?(g1>g2?teamName(t1):g2>g1?teamName(t2):""):"";
+                    return(
+                      <tr key={si}>
+                        <td style={{fontWeight:800,fontSize:13}}>{s.c}</td>
+                        <td style={{padding:"3px 6px"}}><input type="number" min="0" max="9" value={s.g1} onChange={e=>updScore(si,"g1",e.target.value)} style={{textAlign:"center",padding:4}}/></td>
+                        <td style={{padding:"3px 6px"}}><input type="number" min="0" max="9" value={s.g2} onChange={e=>updScore(si,"g2",e.target.value)} style={{textAlign:"center",padding:4}}/></td>
+                        <td style={{textAlign:"center",fontSize:11,fontWeight:800,color:w===teamName(t1)?"var(--green-dark)":w?"var(--red)":"var(--gray)"}}>{w?`✓ ${w.split(" ")[1]}`:""}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                {filled&&<tfoot><tr style={{background:"#21262d"}}><td style={{fontWeight:800,color:"#e6edf3"}}>Total</td><td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{m.total1}</td><td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{m.total2}</td><td style={{textAlign:"center",fontWeight:900,color:"#3fb950"}}>{m.pts1}–{m.pts2}</td></tr></tfoot>}
+              </table>
+            </div>
+            <button className="btn btn-primary" style={{width:"100%",padding:14,fontSize:16,marginTop:12}} onClick={handleSave}>💾 Save {m.label}</button>
+          </div>
+        );
+      })()}
     </div>
   );
 }
