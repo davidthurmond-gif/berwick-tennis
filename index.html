@@ -117,6 +117,7 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ─── DATA ────────────────────────────────────────────────────────────────────
 const SEED = {
+  _v:1,
   season:"Thursday Night Competition – Autumn 2026", adminPassword:"tennis2026", anthropicKey:"",
   teams:[
     {id:1,name:"Brights",    players:["Cooper Khalil","Simran Chawla","David Sutton","Chris Maniatakis"]},
@@ -399,8 +400,8 @@ const SEED = {
 };
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
-function loadData(){try{const s=localStorage.getItem("btc_v3");if(s)return JSON.parse(s);}catch(e){}return JSON.parse(JSON.stringify(SEED));}
-function saveData(d){try{localStorage.setItem("btc_v3",JSON.stringify(d));}catch(e){}}
+function loadData(){try{const s=localStorage.getItem("btc_v3");if(s){const d=JSON.parse(s);if(d._v===SEED._v)return d;}}catch(e){}const fresh=JSON.parse(JSON.stringify(SEED));try{localStorage.setItem("btc_v3",JSON.stringify(fresh));}catch(e){}return fresh;}
+function saveData(d){try{localStorage.setItem("btc_v3",JSON.stringify({...d,_v:SEED._v}));}catch(e){}}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const COMBO_MAP={"1+2":[0,1],"3+4":[2,3],"1+3":[0,2],"2+4":[1,3],"1+4":[0,3],"2+3":[1,2]};
