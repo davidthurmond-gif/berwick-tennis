@@ -782,8 +782,8 @@ function ResultsPage({data,navRound,clearNavRound}){
     <div className="page">
       {/* Finals */}
       <FinalsCard data={data}/>
-      {data.finals&&<FinalsMatchCard m={data.finals.qualifying} teams={teams} label="Qualifying Final"/>}
-      {data.finals&&<FinalsMatchCard m={data.finals.elimination} teams={teams} label="Elimination Final"/>}
+      {data.finals&&data.finals.qualifying&&<FinalsMatchCard m={data.finals.qualifying} teams={teams} label="Qualifying Final"/>}
+      {data.finals&&data.finals.elimination&&<FinalsMatchCard m={data.finals.elimination} teams={teams} label="Elimination Final"/>}
 
       {/* Mini ladder */}
       <div className="card" style={{padding:0,overflow:"hidden",marginBottom:12}}>
@@ -1142,6 +1142,7 @@ function StatsPage({data}){
   const allPairs=useMemo(()=>sortByPerf(partnerStats.filter(p=>p.W+p.L>=3)),[partnerStats]);
   const allSubs=useMemo(()=>sortByPerf(playerStats.filter(p=>p.subW+p.subL>0),"subW","subL","subGF","subGA"),[playerStats]);
   const gameWinners=useMemo(()=>[...playerStats].filter(p=>p.gF+p.gA>0).sort((a,b)=>b.gF-a.gF),[playerStats]);
+  const hasFinals=!!(data.finals&&data.finals.qualifying);
 
   const byPos=useMemo(()=>{
     const result={};
@@ -1157,7 +1158,7 @@ function StatsPage({data}){
   return(
     <div className="page">
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {[["overall","Players – Season"],["gamewinners","Top Game-Winners"],["finals","Players – Finals"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
+        {[["overall","Players – Season"],["gamewinners","Top Game-Winners"],...(hasFinals?[["finals","Players – Finals"]]:[]),["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
           <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
@@ -1220,7 +1221,7 @@ function StatsPage({data}){
         </div>
       )}
 
-      {tab==="finals"&&(
+      {tab==="finals"&&hasFinals&&(
         <div className="card" style={{padding:0,overflow:"hidden"}}>
           <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
             <h2 style={{margin:0}}>Players – Finals</h2>
