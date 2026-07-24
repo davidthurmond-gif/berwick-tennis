@@ -400,8 +400,8 @@ const SEED = {
 };
 
 // ─── STORAGE ─────────────────────────────────────────────────────────────────
-function loadData(){try{const s=localStorage.getItem("btc_v3");if(s){const d=JSON.parse(s);if(d._v===SEED._v)return d;}}catch(e){}const fresh=JSON.parse(JSON.stringify(SEED));try{localStorage.setItem("btc_v3",JSON.stringify(fresh));}catch(e){}return fresh;}
-function saveData(d){try{localStorage.setItem("btc_v3",JSON.stringify({...d,_v:SEED._v}));}catch(e){}}
+const API_URL="/api/results";const API_KEY="tennis2026";async function loadData(){try{const res=await fetch(API_URL,{cache:"no-store"});if(res.ok){const d=await res.json();if(d&&d._v===SEED._v)return d;}}catch(e){console.error("Could not reach live server, using local copy.",e);}try{const s=localStorage.getItem("btc_v3");if(s){const d=JSON.parse(s);if(d._v===SEED._v)return d;}}catch(e){}return JSON.parse(JSON.stringify(SEED));}
+async function saveData(d){const full={...d,_v:SEED._v};try{localStorage.setItem("btc_v3",JSON.stringify(full));}catch(e){}try{const res=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json","x-admin-key":API_KEY},body:JSON.stringify(full)});if(!res.ok){const msg=await res.text().catch(()=>"");alert("Save did not reach the shared server (kept on this device only). "+msg);}}catch(e){alert("Could not reach the server — results only saved on this device. Check your connection and try again.");}}
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const COMBO_MAP={"1+2":[0,1],"3+4":[2,3],"1+3":[0,2],"2+4":[1,3],"1+4":[0,3],"2+3":[1,2]};
@@ -2150,7 +2150,7 @@ function Settings({data,setData}){
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 function App(){
-  const[data,setData]=useState(()=>loadData());
+  const[data,setData]=useState(()=>JSON.parse(JSON.stringify(SEED)));const[loading,setLoading]=useState(true);useEffect(()=>{let alive=true;loadData().then(d=>{if(alive){setData(d);setLoading(false);}});return()=>{alive=false;};},[]);
   const[page,setPage]=useState("home");
   const[navRound,setNavRound]=useState(null);
 
