@@ -198,6 +198,201 @@ function calcLadder(data,upToRound=Infinity){
   return Object.values(map).sort((a,b)=>(b.Pts-a.Pts)||((b.GF/(b.GF+b.GA)||0)-(a.GF/(a.GF+a.GA)||0)));
 }
 
+function calcTeamStreaks(data){
+  const map={};
+  data.teams.forEach(t=>{map[t.id]={id:t.id,history:[]};});
+  [...data.results].sort((a,b)=>a.round-b.round).forEach(rnd=>{
+    rnd.matches.forEach(m=>{
+      const r1=map[m.team1],r2=map[m.team2];
+      if(!r1||!r2)return;
+      if(m.pts1>m.pts2){r1.history.push("W");r2.history.push("L");}
+      else if(m.pts2>m.pts1){r2.history.push("W");r1.history.push("L");}
+      else{r1.history.push("D");r2.history.push("D");}
+    });
+  });
+  Object.values(map).forEach(t=>{
+    t.form=t.history.slice(-5);
+    let type=null,count=0;
+    for(let i=t.history.length-1;i>=0;i--){
+      if(type===null){type=t.history[i];count=1;}
+      else if(t.history[i]===type)count++;
+      else break;
+    }
+    t.streakType=type;t.streakCount=count;
+  });
+  return map;
+}
+
+function calcRoundHighlights(data,round){
+  const rnd=data.results.find(r=>r.round===round);
+  if(!rnd)return null;
+  const prevLadder=calcLadder(data,round-1);
+  const rankOf={};prevLadder.forEach((t,i)=>{rankOf[t.id]=i;});
+  const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
+
+  const playerGames={};
+  rnd.matches.forEach(m=>{
+    (m.sets||[]).forEach((s,si)=>{
+      const combo=s.c||COMBOS[si];
+      const idxs=COMBO_MAP[combo];
+      if(!idxs)return;
+      const[ia,ib]=idxs;
+      const sg1=Number(s.g1)||0, sg2=Number(s.g2)||0;
+      [
+        {name:m.roster1[ia],g:sg1},{name:m.roster1[ib],g:sg1},
+        {name:m.roster2[ia],g:sg2},{name:m.roster2[ib],g:sg2},
+      ].forEach(({name,g})=>{
+        if(!name)return;
+        if(!playerGames[name])playerGames[name]={name,games:0};
+        playerGames[name].games+=g;
+      });
+    });
+  });
+  const mvp=Object.values(playerGames).sort((a,b)=>b.games-a.games)[0]||null;
+
+  const withMargin=rnd.matches.map(m=>({...m,margin:Math.abs((m.total1||0)-(m.total2||0))}));
+  const closest=withMargin.length?[...withMargin].sort((a,b)=>a.margin-b.margin)[0]:null;
+  const blowout=withMargin.length?[...withMargin].sort((a,b)=>b.margin-a.margin)[0]:null;
+
+  let upset=null;
+  if(round>1){
+    let best=null;
+    rnd.matches.forEach(m=>{
+      const r1=rankOf[m.team1],r2=rankOf[m.team2];
+      if(r1==null||r2==null)return;
+      const winnerIsTeam1=m.pts1>m.pts2;
+      if(m.pts1===m.pts2)return;
+      const winnerRank=winnerIsTeam1?r1:r2;
+      const loserRank=winnerIsTeam1?r2:r1;
+      if(winnerRank>loserRank){
+        const margin=Math.abs((m.total1||0)-(m.total2||0));
+        const rankGap=winnerRank-loserRank;
+        if(!best||rankGap>best.rankGap||(rankGap===best.rankGap&&margin>best.margin)){
+          best={margin,rankGap,winnerId:winnerIsTeam1?m.team1:m.team2,loserId:winnerIsTeam1?m.team2:m.team1};
+        }
+      }
+    });
+    upset=best;
+  }
+
+  return{round,mvp,closest,blowout,upset};
+}
+
+function calcFinalsRace(data){
+  const ladder=calcLadder(data);
+  if(data.results.length===0)return null;
+  const totalRounds=data.fixtures.length;
+  const played=data.results.length;
+  const remaining=totalRounds-played;
+  const MAX_PER_ROUND=8;
+  const fourthPts=ladder[3]?ladder[3].Pts:0;
+  const fifthPts=ladder[4]?ladder[4].Pts:0;
+  return ladder.map((t,i)=>{
+    const maxPossible=t.Pts+remaining*MAX_PER_ROUND;
+    const inTop4=i<4;
+    const eliminated=!inTop4&&maxPossible<fourthPts;
+    const clinched=inTop4&&(t.Pts>fifthPts+remaining*MAX_PER_ROUND);
+    return{...t,rank:i+1,maxPossible,eliminated,clinched,inTop4};
+  });
+}
+
+function FormDots({form}){
+  if(!form||form.length===0)return null;
+  return(<span style={{display:"inline-flex",gap:3,alignItems:"center"}}>{form.map((r,i)=>(
+    <span key={i} title={r==="W"?"Win":r==="L"?"Loss":"Draw"} style={{width:7,height:7,borderRadius:"50%",display:"inline-block",background:r==="W"?"#3fb950":r==="L"?"#f85149":"#8b949e"}}/>
+  ))}</span>);
+}
+
+function StreakBadge({type,count}){
+  if(!type||count<2)return null;
+  if(type==="W")return(<span style={{fontSize:10,color:"var(--green-dark)",fontWeight:800}}>🔥{count}W</span>);
+  if(type==="L")return(<span style={{fontSize:10,color:"var(--red)",fontWeight:800}}>❄️{count}L</span>);
+  return null;
+}
+
+function RoundHighlightsCard({data,round}){
+  if(!round){
+    const first=data.fixtures[0];
+    let days=null;
+    if(first){
+      const d=Math.ceil((new Date(first.date+"T00:00:00")-new Date())/86400000);
+      days=isNaN(d)?null:d;
+    }
+    return(
+      <div className="card" style={{textAlign:"center"}}>
+        <div style={{fontSize:28}}>🎾</div>
+        <h3 style={{marginTop:6,marginBottom:2}}>Season kicks off soon!</h3>
+        <div style={{fontSize:13,color:"var(--gray)"}}>
+          {first?`Round 1 · ${fmtDate(first.date)}${days!=null&&days>=0?` · ${days} day${days===1?"":"s"} to go`:""}`:"Fixtures locked in — check back soon."}
+        </div>
+        <div style={{fontSize:12,color:"var(--gray)",marginTop:8}}>Once Round 1 results are in, look here for MVP of the Round, Biggest Upset, Closest Match and more.</div>
+      </div>
+    );
+  }
+  const h=calcRoundHighlights(data,round);
+  if(!h)return null;
+  const teamOf=id=>getTeam(data.teams,id);
+  return(
+    <div className="card">
+      <h3 style={{margin:"0 0 10px"}}>🌟 Round {h.round} Highlights</h3>
+      <div style={{display:"grid",gap:9}}>
+        {h.mvp&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:"var(--gray)"}}>🏅 MVP of the Round</span>
+            <span style={{fontWeight:700,fontSize:13,textAlign:"right"}}>{h.mvp.name} <span style={{color:"var(--gray)",fontWeight:600}}>({h.mvp.games} games)</span></span>
+          </div>
+        )}
+        {h.upset?(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:"var(--gray)"}}>😱 Biggest Upset</span>
+            <span style={{fontWeight:700,fontSize:13,textAlign:"right"}}>{teamName(teamOf(h.upset.winnerId))} d. {teamName(teamOf(h.upset.loserId))}</span>
+          </div>
+        ):round>1&&(
+          <div style={{fontSize:12,color:"var(--gray)"}}>😱 No upsets this round — results went to form.</div>
+        )}
+        {h.closest&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:"var(--gray)"}}>😅 Closest Match</span>
+            <span style={{fontWeight:700,fontSize:13,textAlign:"right"}}>{teamName(teamOf(h.closest.team1))} v {teamName(teamOf(h.closest.team2))} <span style={{color:"var(--gray)",fontWeight:600}}>({h.closest.total1}–{h.closest.total2})</span></span>
+          </div>
+        )}
+        {h.blowout&&(
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+            <span style={{fontSize:12,color:"var(--gray)"}}>💥 Blowout of the Round</span>
+            <span style={{fontWeight:700,fontSize:13,textAlign:"right"}}>{teamName(teamOf(h.blowout.team1))} v {teamName(teamOf(h.blowout.team2))} <span style={{color:"var(--gray)",fontWeight:600}}>({h.blowout.total1}–{h.blowout.total2})</span></span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FinalsRaceCard({data}){
+  const rows=calcFinalsRace(data);
+  if(!rows)return null;
+  const remaining=data.fixtures.length-data.results.length;
+  if(remaining<=0)return null;
+  const contenders=rows.filter(r=>!r.eliminated);
+  const eliminated=rows.filter(r=>r.eliminated);
+  return(
+    <div className="card">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <h3 style={{margin:0}}>🏁 Finals Race</h3>
+        <span style={{fontSize:11,color:"var(--gray)"}}>{remaining} round{remaining===1?"":"s"} left</span>
+      </div>
+      <div style={{fontSize:12,color:"var(--gray)",marginBottom:6}}>Still mathematically in contention for Top 4:</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:eliminated.length?10:0}}>
+        {contenders.map(r=>(
+          <span key={r.id} className="badge" style={{background:r.inTop4?"#0d3d0d":"#21262d",color:r.inTop4?"#3fb950":"#c9d1d9"}}>{teamName(getTeam(data.teams,r.id))}</span>
+        ))}
+      </div>
+      {eliminated.length>0&&(
+        <div style={{fontSize:11,color:"var(--gray)"}}>Eliminated: {eliminated.map(r=>teamName(getTeam(data.teams,r.id))).join(", ")}</div>
+      )}
+    </div>
+  );
+}
+
 function calcPlayerStats(data){
   const{teams,results}=data;
   const stats={};
@@ -208,7 +403,7 @@ function calcPlayerStats(data){
         W:0,L:0,gF:0,gA:0,
         subW:0,subL:0,subGF:0,subGA:0,
         pos:{1:{W:0,L:0,gF:0,gA:0},2:{W:0,L:0,gF:0,gA:0},3:{W:0,L:0,gF:0,gA:0},4:{W:0,L:0,gF:0,gA:0}},
-        l3:{W:0,L:0,gF:0,gA:0}};
+        l3:{W:0,L:0,gF:0,gA:0},hist:[]};
     }
     return stats[name];
   }
@@ -216,7 +411,7 @@ function calcPlayerStats(data){
   const allRnds=[...results].sort((a,b)=>a.round-b.round).map(r=>r.round);
   const l3=new Set(allRnds.slice(-3));
   const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
-  results.forEach(rnd=>{
+  [...results].sort((a,b)=>a.round-b.round).forEach(rnd=>{
     const inL3=l3.has(rnd.round);
     rnd.matches.forEach(m=>{
       m.sets.forEach((s,si)=>{
@@ -245,10 +440,21 @@ function calcPlayerStats(data){
             st.gF+=gMe;st.gA+=gOp;
             if(pos>=1&&pos<=4){st.pos[pos].W+=W;st.pos[pos].L+=L;st.pos[pos].gF+=gMe;st.pos[pos].gA+=gOp;}
             if(inL3){st.l3.W+=W;st.l3.L+=L;st.l3.gF+=gMe;st.l3.gA+=gOp;}
+            if(W)st.hist.push("W");if(L)st.hist.push("L");
           }
         });
       });
     });
+  });
+  Object.values(stats).forEach(s=>{
+    s.form=s.hist.slice(-5);
+    let type=null,count=0;
+    for(let i=s.hist.length-1;i>=0;i--){
+      if(type===null){type=s.hist[i];count=1;}
+      else if(s.hist[i]===type)count++;
+      else break;
+    }
+    s.streakType=type;s.streakCount=count;
   });
   return Object.values(stats);
 }
@@ -350,6 +556,10 @@ function HomePage({data}){
   const ladder=useMemo(()=>calcLadder(data),[data]);
   const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
   const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
+  const streaks=useMemo(()=>calcTeamStreaks(data),[data]);
+  const lastRoundNum=data.results.length?Math.max(...data.results.map(r=>r.round)):null;
+  const remainingRounds=data.fixtures.length-data.results.length;
+  const showFinalsTag=remainingRounds<=4;
 
   const topTeam=ladder[0];
   const topTeamData=topTeam?getTeam(data.teams,topTeam.id):null;
@@ -388,6 +598,9 @@ function HomePage({data}){
       {/* Finals Bracket */}
       <FinalsBracket data={data}/>
 
+      {/* Round Highlights */}
+      <RoundHighlightsCard data={data} round={lastRoundNum}/>
+
       {/* Ladder Progression */}
       <div className="card" style={{padding:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -404,7 +617,7 @@ function HomePage({data}){
           <span className="badge badge-navy">Rd {lastRound} of 14</span>
         </div>
         <table>
-          <thead><tr><th style={{width:28}}>#</th><th>Team</th><th style={{textAlign:"center"}}>P</th><th style={{textAlign:"center"}}>Pts</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+          <thead><tr><th style={{width:28}}>#</th><th>Team</th><th style={{textAlign:"center"}}>P</th><th style={{textAlign:"center"}}>Pts</th><th style={{textAlign:"center"}}>+/-</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
           <tbody>
             {ladder.map((t,i)=>{
               const cls=`${i<4?"finals-row":""} pos-border-${Math.min(i+1,4)}`;
@@ -412,9 +625,18 @@ function HomePage({data}){
               return(
                 <tr key={t.id} className={cls}>
                   <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
-                  <td><div style={{fontWeight:700}}>{teamName(team)}</div><div style={{fontSize:10,color:"var(--gray)",fontWeight:600}}>{team.name}</div>{i<4&&<div style={{fontSize:10,color:"var(--green-dark)",fontWeight:700}}>Finals</div>}</td>
+                  <td>
+                    <div style={{fontWeight:700}}>{teamName(team)}</div>
+                    <div style={{fontSize:10,color:"var(--gray)",fontWeight:600}}>{team.name}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                      <FormDots form={streaks[t.id]?.form}/>
+                      <StreakBadge type={streaks[t.id]?.streakType} count={streaks[t.id]?.streakCount}/>
+                    </div>
+                    {showFinalsTag&&i<4&&<div style={{fontSize:10,color:"var(--green-dark)",fontWeight:700}}>Finals</div>}
+                  </td>
                   <td style={{textAlign:"center"}}>{t.P}</td>
                   <td style={{textAlign:"center",fontWeight:800,color:"#e6edf3"}}>{t.Pts}</td>
+                  <td style={{textAlign:"center",fontWeight:700,color:t.GF-t.GA>0?"var(--green-dark)":t.GF-t.GA<0?"var(--red)":"#8b949e"}}>{t.GF-t.GA>0?"+":""}{t.GF-t.GA}</td>
                   <td style={{textAlign:"center",fontWeight:700,color:"#8b949e"}}>{t.GF+t.GA>0?(t.GF/(t.GF+t.GA)*100).toFixed(2)+'%':'–'}</td>
                 </tr>
               );
@@ -422,6 +644,9 @@ function HomePage({data}){
           </tbody>
         </table>
       </div>
+
+      {/* Finals Race */}
+      <FinalsRaceCard data={data}/>
 
       {/* Next Up */}
       {nextRound&&(
@@ -550,6 +775,7 @@ function ResultsPage({data,navRound,clearNavRound}){
   });
   useEffect(()=>{if(navRound){setSelRound(navRound);clearNavRound&&clearNavRound();}},[navRound]);
   const ladder=useMemo(()=>calcLadder(data),[data]);
+  const streaks=useMemo(()=>calcTeamStreaks(data),[data]);
   const rnd=results.find(r=>r.round===selRound);
 
   return(
@@ -567,6 +793,7 @@ function ResultsPage({data,navRound,clearNavRound}){
               <th style={{width:28}}>#</th><th>Team</th>
               <th style={{textAlign:"center"}}>P</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>D</th><th style={{textAlign:"center"}}>L</th>
               <th style={{textAlign:"center",color:"#e6edf3"}}>Pts</th>
+              <th style={{textAlign:"center"}}>+/-</th>
               <th style={{textAlign:"center"}}>Set%</th>
               <th style={{textAlign:"center"}}>Game%</th>
             </tr></thead>
@@ -578,12 +805,20 @@ function ResultsPage({data,navRound,clearNavRound}){
                 return(
                   <tr key={t.id} className={i<4?"finals-row":""}>
                     <td style={{textAlign:"center",fontWeight:800,fontSize:13}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
-                    <td><div style={{fontWeight:700,fontSize:13}}>{teamName(team)}</div><div style={{fontSize:10,color:"var(--gray)",fontWeight:600}}>{team.name}</div></td>
+                    <td>
+                      <div style={{fontWeight:700,fontSize:13}}>{teamName(team)}</div>
+                      <div style={{fontSize:10,color:"var(--gray)",fontWeight:600}}>{team.name}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                        <FormDots form={streaks[t.id]?.form}/>
+                        <StreakBadge type={streaks[t.id]?.streakType} count={streaks[t.id]?.streakCount}/>
+                      </div>
+                    </td>
                     <td style={{textAlign:"center"}}>{t.P}</td>
                     <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{t.W}</td>
                     <td style={{textAlign:"center"}}>{t.D}</td>
                     <td style={{textAlign:"center",color:"var(--red)"}}>{t.L}</td>
                     <td style={{textAlign:"center",fontWeight:900,color:"#e6edf3"}}>{t.Pts}</td>
+                    <td style={{textAlign:"center",fontWeight:700,color:t.GF-t.GA>0?"var(--green-dark)":t.GF-t.GA<0?"var(--red)":"#8b949e"}}>{t.GF-t.GA>0?"+":""}{t.GF-t.GA}</td>
                     <td style={{textAlign:"center",fontSize:13,fontWeight:700}}>{fmtPct(sp)}</td>
                     <td style={{textAlign:"center",fontSize:13,color:"#8b949e"}}>{gp}</td>
                   </tr>
@@ -620,6 +855,8 @@ function ResultsPage({data,navRound,clearNavRound}){
           })}
         </div>
       </div>
+
+      {rnd&&<RoundHighlightsCard data={data} round={selRound}/>}
 
       {rnd?rnd.matches.map((m,mi)=><MatchCard key={mi} m={m} teams={teams}/>):(
         <div className="card" style={{textAlign:"center",color:"var(--gray)",padding:28}}>
@@ -904,6 +1141,7 @@ function StatsPage({data}){
   const allFinalsPlayers=useMemo(()=>sortByPerf(finalsPlayerStats.filter(p=>p.W+p.L>0)),[finalsPlayerStats]);
   const allPairs=useMemo(()=>sortByPerf(partnerStats.filter(p=>p.W+p.L>=3)),[partnerStats]);
   const allSubs=useMemo(()=>sortByPerf(playerStats.filter(p=>p.subW+p.subL>0),"subW","subL","subGF","subGA"),[playerStats]);
+  const gameWinners=useMemo(()=>[...playerStats].filter(p=>p.gF+p.gA>0).sort((a,b)=>b.gF-a.gF),[playerStats]);
 
   const byPos=useMemo(()=>{
     const result={};
@@ -919,7 +1157,7 @@ function StatsPage({data}){
   return(
     <div className="page">
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {[["overall","Players – Season"],["finals","Players – Finals"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
+        {[["overall","Players – Season"],["gamewinners","Top Game-Winners"],["finals","Players – Finals"],["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
           <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
@@ -932,13 +1170,14 @@ function StatsPage({data}){
           </div>
           <div style={{overflowX:"auto"}}>
             <table style={{minWidth:360}}>
-              <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
+              <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>Form</th><th style={{textAlign:"center"}}>W</th><th style={{textAlign:"center"}}>L</th><th style={{textAlign:"center"}}>Set%</th><th style={{textAlign:"center"}}>Game%</th></tr></thead>
               <tbody>
                 {allPlayers.map((p,i)=>(
                   <tr key={p.name}>
                     <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
                     <td style={{fontWeight:700}}>{p.name}</td>
                     <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                    <td style={{textAlign:"center"}}><div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:5}}><FormDots form={p.form}/><StreakBadge type={p.streakType} count={p.streakCount}/></div></td>
                     <td style={{textAlign:"center",color:"var(--green-dark)",fontWeight:700}}>{p.W}</td>
                     <td style={{textAlign:"center",color:"var(--red)"}}>{p.L}</td>
                     <td style={{textAlign:"center",fontWeight:800}}>{fmtPct(swPct(p.W,p.L))}</td>
@@ -948,6 +1187,36 @@ function StatsPage({data}){
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {tab==="gamewinners"&&(
+        <div className="card" style={{padding:0,overflow:"hidden"}}>
+          <div style={{padding:"12px 14px",borderBottom:"1px solid var(--gray-border)"}}>
+            <h2 style={{margin:0}}>Top Game-Winners</h2>
+            <div style={{fontSize:12,color:"var(--gray)",marginTop:2}}>Total individual games won across all sets played this season (own team only).</div>
+          </div>
+          {gameWinners.length===0?(
+            <div style={{padding:24,textAlign:"center",color:"var(--gray)"}}>No games played yet</div>
+          ):(
+            <div style={{overflowX:"auto"}}>
+              <table style={{minWidth:360}}>
+                <thead><tr><th style={{width:28}}>#</th><th>Player</th><th>Team</th><th style={{textAlign:"center"}}>Form</th><th style={{textAlign:"center"}}>Games Won</th><th style={{textAlign:"center"}}>Games Lost</th></tr></thead>
+                <tbody>
+                  {gameWinners.map((p,i)=>(
+                    <tr key={p.name}>
+                      <td style={{textAlign:"center",fontWeight:800}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1}</td>
+                      <td style={{fontWeight:700}}>{p.name}</td>
+                      <td style={{fontSize:12,color:"var(--gray)"}}>{p.teamName}</td>
+                      <td style={{textAlign:"center"}}><div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:5}}><FormDots form={p.form}/><StreakBadge type={p.streakType} count={p.streakCount}/></div></td>
+                      <td style={{textAlign:"center",fontWeight:900,color:"var(--green-dark)"}}>{p.gF}</td>
+                      <td style={{textAlign:"center",color:"var(--red)"}}>{p.gA}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
