@@ -907,8 +907,7 @@ function MatchCard({m,teams}){
               </div>
               <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
                 <span className={w1?"score-win":"score-lose"} style={{fontSize:20}}>{s.g1}</span>
-                <span className="combo-lbl">{combo}</span>
-                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
+                <span className="combo-lbl">{combo}{wo?" 🌧️":""}</span>                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
               </div>
               <div style={{textAlign:"right"}}>
                 <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2a}{isSub(teams,p2a,m.team2)&&<span className="sub-badge">SUB</span>}</span>
@@ -1017,8 +1016,7 @@ function FinalsMatchCard({m,teams,label}){
               </div>
               <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
                 <span className={w1?"score-win":"score-lose"} style={{fontSize:20}}>{s.g1}</span>
-                <span className="combo-lbl">{combo}</span>
-                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
+                <span className="combo-lbl">{combo}{wo?" 🌧️":""}</span>                <span className={w2?"score-win":"score-lose"} style={{fontSize:20}}>{s.g2}</span>
               </div>
               <div style={{textAlign:"right"}}>
                 <span className="player-name" style={{fontWeight:w2?700:400,color:w2?"#e6edf3":"#8b949e"}}>{p2a}{isSub(teams,p2a,m.team2)&&<span className="sub-badge">SUB</span>}</span>
