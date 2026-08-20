@@ -131,8 +131,7 @@ function teamName(team){if(!team)return"?";const f=team.players[0]?.split(" ")[0
 function tName(teams,id){return teamName(getTeam(teams,id));}
 function TL({team,align}){if(!team)return null;return(<span style={{display:"inline-flex",flexDirection:"column",alignItems:align==="right"?"flex-end":align==="center"?"center":"flex-start",lineHeight:1.15}}><span>{teamName(team)}</span><span style={{fontSize:10,fontWeight:600,color:"var(--gray)"}}>{team.name}</span></span>);}
 function fmtDate(iso){if(!iso)return"";const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});}
-function isSub(teams,player,teamId){return!getTeam(teams,teamId).players.includes(player);}
-
+      function isSub(teams,player,teamId){return!!player&&!getTeam(teams,teamId).players.includes(player);}
 function getFinalsState(data){
   const f=data.finals; if(!f)return null;
   const{qualifying:q,elimination:e,prelim:p,grandFinal:g}=f;
