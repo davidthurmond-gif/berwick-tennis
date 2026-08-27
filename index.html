@@ -1448,15 +1448,13 @@ function ContactsPage({data}){
             <div style={{fontSize:11,color:"var(--gray)",fontWeight:600}}>{team.name}</div>
           </div>
           {team.players.map((p,i)=>{
-            const mobile=(team.mobiles&&team.mobiles[i])||"";
-            return(
+          const mobile=(data.playerContacts&&data.playerContacts[p])||"";            return(
               <div key={p} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",borderBottom:i<team.players.length-1?"1px solid var(--gray-border)":"none"}}>
                 <span style={{fontWeight:700,fontSize:13}}>{p}</span>
                 {mobile?(
                   <a href={`tel:${mobile.replace(/\s/g,"")}`} style={{color:"var(--blue)",fontWeight:700,fontSize:13,textDecoration:"none"}}>{mobile}</a>
                 ):(
-                  <span style={{fontSize:12,color:"var(--gray)"}}>–</span>
-                )}
+                <span style={{fontSize:12,color:"var(--gray)"}}>No number on file</span>                )}
               </div>
             );
           })}
