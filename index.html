@@ -247,7 +247,7 @@ function calcRoundHighlights(data,round){
       });
     });
   });
-  const mvp=Object.values(playerGames).sort((a,b)=>b.games-a.games)[0]||null;
+  const MVP_EXCLUDE=new Set(["David Thurmond"]);const mvp=Object.values(playerGames).filter(p=>!MVP_EXCLUDE.has(p.name)).sort((a,b)=>b.games-a.games)[0]||null;
 
   const withMargin=rnd.matches.map(m=>({...m,margin:Math.abs((m.total1||0)-(m.total2||0))}));
   const closest=withMargin.length?[...withMargin].sort((a,b)=>a.margin-b.margin)[0]:null;
