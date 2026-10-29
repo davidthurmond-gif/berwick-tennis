@@ -1521,9 +1521,9 @@ function FixturesPage({data,navigate,ladder=[]}){
             {label:"Preliminary Final",date:fmtDate(fs.prelim.date),detail:fs.prelim.played?`${tName(data.teams,fs.prelim.winner)} def ${tName(data.teams,fs.prelim.loser)}${fs.prelim.total1!=null?` ${fs.prelim.total1}–${fs.prelim.total2}`:""} — through to Grand Final`:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
             {label:"Grand Final",date:fmtDate(fs.grandFinal.date),detail:fs.grandFinal.played?`🏆 ${tName(data.teams,fs.grandFinal.champion)} def ${tName(data.teams,fs.grandFinal.runnerUp)}${fs.grandFinal.total1!=null?` ${fs.grandFinal.total1}–${fs.grandFinal.total2}`:""} — Premiers!`:fs.grandFinal.team2!=null?`${tName(data.teams,fs.grandFinal.team1)} v ${tName(data.teams,fs.grandFinal.team2)}`:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
           ]:[
-            {label:"Elimination & Qualifying",date:"11 Jun 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
-            {label:"Preliminary Final",date:"18 Jun 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
-            {label:"Grand Final",date:"25 Jun 2026",detail:`Winner ${n(0)}/${n(1)} v Winner Prelim`},
+            {label:"Elimination & Qualifying",date:"19 Nov 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
+            {label:"Preliminary Final",date:"26 Nov 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
+            {label:"Grand Final",date:"03 Dec 2026",detail:`Winner ${n(0)}/${n(1)} v Winner Prelim`},
           ];
           return finals.map((f,i)=>(
             <div key={i} style={{padding:"8px 0",borderBottom:i<finals.length-1?"1px solid #2d5a2d":"none"}}>
@@ -1798,7 +1798,7 @@ function FinalsScoreEntry({data,setData}){
     const[team1,team2]=teamsForStage(stageKey);
     if(team1==null||team2==null)return null;
     const t1=getTeam(teams,team1),t2=getTeam(teams,team2);
-    const defDate=stageKey==="prelim"?"2026-06-18":stageKey==="grandFinal"?"2026-06-25":existing?.date;
+    const defDate=stageKey==="prelim"?"2026-11-26":stageKey==="grandFinal"?"2026-12-03":existing?.date;
     return{
       team1,team2,
       label:existing?.label||STAGES.find(s=>s.key===stageKey).label,
