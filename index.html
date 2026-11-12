@@ -393,7 +393,7 @@ function FinalsRaceCard({data}){
 }
 
 function calcPlayerStats(data){
-  const{teams,results}=data;
+  const{teams}=data;const results=regResults(data);
   const stats={};
   function ensure(name){
     if(!stats[name]){
@@ -459,7 +459,7 @@ function calcPlayerStats(data){
 }
 
 function calcPartnerStats(data){
-  const{results}=data;
+  const results=regResults(data);
   const pairs={};
   function key(a,b){return[a,b].sort().join(" & ");}
   const COMBOS=["1+2","3+4","1+3","2+4","1+4","2+3"];
@@ -530,7 +530,7 @@ function sortByPerf(arr,wKey="W",lKey="L",gFKey="gF",gAKey="gA"){
 
 // ─── HEADER ──────────────────────────────────────────────────────────────────
 function Header({page,setPage}){
-  const tabs=[{id:"home",l:"🏠 Home"},{id:"results",l:"📋 Results"},{id:"stats",l:"📊 Stats"},{id:"teams",l:"👥 Teams"},{id:"fixtures",l:"📅 Fixtures"},{id:"contacts",l:"📞 Contacts"},{id:"admin",l:"⚙️ Admin"}];
+  const tabs=[{id:"home",l:"🏠 Home"},{id:"results",l:"📋 Results"},{id:"finals",l:"🏆 Finals"},{id:"stats",l:"📊 Stats"},{id:"teams",l:"👥 Teams"},{id:"fixtures",l:"📅 Fixtures"},{id:"contacts",l:"📞 Contacts"},{id:"admin",l:"⚙️ Admin"}];
   return(
     <div style={{position:"sticky",top:0,zIndex:100,background:null}}>
       <div style={{background:"#0d1117",borderBottom:"1px solid #21262d",padding:"12px 16px 8px"}}>
@@ -551,7 +551,7 @@ function Header({page,setPage}){
 }
 
 // ─── HOME PAGE ───────────────────────────────────────────────────────────────
-function HomePage({data}){
+function HomePage({data,go}){
   const ladder=useMemo(()=>calcLadder(data),[data]);
   const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
   const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
@@ -592,6 +592,7 @@ function HomePage({data}){
   return(
     <div className="page">
       {/* Finals */}
+      <FinalsHomeCard data={data} go={go}/>
       <FinalsCard data={data}/>
 
       {/* Finals Bracket */}
@@ -1126,7 +1127,7 @@ function FinalsBracket({data}){
 
 // ─── STATS PAGE ───────────────────────────────────────────────────────────────
 function StatsPage({data}){
-  const[tab,setTab]=useState("overall");
+  const[tab,setTab]=useState("season");
   const[posTab,setPosTab]=useState(1);
   const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
   const partnerStats=useMemo(()=>calcPartnerStats(data),[data]);
@@ -1153,10 +1154,12 @@ function StatsPage({data}){
   return(
     <div className="page">
       <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-        {[["overall","Players – Season"],["gamewinners","Top Game-Winners"],...(hasFinals?[["finals","Players – Finals"]]:[]),["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
+        {[["season","🏅 Season Summary"],["overall","Players – Season"],["gamewinners","Top Game-Winners"],...(hasFinals?[["finals","Players – Finals"]]:[]),["bypos","By Position"],["partner","Partnerships"],["sub","Substitutes"]].map(([id,lbl])=>(
           <button key={id} className={`btn btn-sm ${tab===id?"btn-primary":"btn-secondary"}`} onClick={()=>setTab(id)}>{lbl}</button>
         ))}
       </div>
+
+      {tab==="season"&&<SeasonSummary data={data}/>}
 
       {tab==="overall"&&(
         <div className="card" style={{padding:0,overflow:"hidden"}}>
@@ -2148,6 +2151,468 @@ function Settings({data,setData}){
 }
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
+// ─── SEASON LOCK, ANALYTICS, FINALS PAGE, SEASON SUMMARY ─────────────────────
+const REG_ROUNDS=14;
+const MVP_EXCLUDE_NAMES=["David Thurmond"];
+function regResults(data){return(data.results||[]).filter(r=>r.round<=REG_ROUNDS);}
+function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0]);}
+function pct0(x){return Math.round(x*100)+"%";}
+
+function calcSeasonAnalytics(data){
+  const teams=data.teams;
+  const results=regResults(data).slice().sort((a,b)=>a.round-b.round);
+  const rounds=results.map(r=>r.round);
+  const hist=rounds.map(r=>calcLadder(data,r));
+  const rank={},cum={},rp={};
+  teams.forEach(t=>{rank[t.id]=[];cum[t.id]=[];rp[t.id]=[];});
+  hist.forEach(lad=>lad.forEach((l,i)=>{rank[l.id].push(i+1);cum[l.id].push(l.Pts);}));
+  const matches=[];
+  results.forEach(r=>{
+    const played={};
+    r.matches.forEach(m=>{
+      played[m.team1]=Number(m.pts1);played[m.team2]=Number(m.pts2);
+      matches.push({round:r.round,a:m.team1,b:m.team2,pa:Number(m.pts1),pb:Number(m.pts2),ga:Number(m.total1),gb:Number(m.total2)});
+    });
+    teams.forEach(t=>rp[t.id].push(played[t.id]!=null?played[t.id]:null));
+  });
+  return{rounds,hist,rank,cum,rp,matches};
+}
+
+function teamMatchList(an,id){
+  return an.matches.filter(m=>m.a===id||m.b===id).map(m=>{
+    const home=m.a===id;
+    const pf=home?m.pa:m.pb,pa=home?m.pb:m.pa,gf=home?m.ga:m.gb,gA=home?m.gb:m.ga;
+    return{round:m.round,opp:home?m.b:m.a,pf,pa,gf,ga:gA,res:pf>pa?"W":pf<pa?"L":"D"};
+  });
+}
+
+function calcTeamStories(data,an){
+  const out={};
+  data.teams.forEach(t=>{
+    const rk=an.rank[t.id];if(!rk.length)return;
+    const final=rk[rk.length-1];
+    const worst=Math.max(...rk),worstRound=an.rounds[rk.lastIndexOf(worst)];
+    const best=Math.min(...rk),bestRound=an.rounds[rk.lastIndexOf(best)];
+    const ml=teamMatchList(an,t.id);
+    let run=0,maxRun=0;ml.forEach(m=>{if(m.res==="W"){run++;maxRun=Math.max(maxRun,run);}else run=0;});
+    out[t.id]={final,worst,worstRound,best,bestRound,climb:worst-final,fall:final-best,
+      roundsAtTop:rk.filter(x=>x===1).length,winStreak:maxRun,form:ml.slice(-5).map(m=>m.res),
+      mid:rk[Math.min(6,rk.length-1)]};
+  });
+  return out;
+}
+
+function storyLine(s){
+  if(!s)return"";
+  if(s.climb>=3)return`Was ${ordinal(s.worst)} after Round ${s.worstRound} – finished ${ordinal(s.final)}.`;
+  if(s.fall>=3)return`Led after Round ${s.bestRound} – finished ${ordinal(s.final)}.`;
+  if(s.roundsAtTop>0)return`Held top spot for ${s.roundsAtTop} round${s.roundsAtTop>1?"s":""}.`;
+  return`Longest winning run: ${s.winStreak} match${s.winStreak===1?"":"es"}.`;
+}
+
+// ── Charts ──────────────────────────────────────────────────────────────────
+function PointsRaceChart({data,an}){
+  const W=500,H=230,PAD={t:12,b:22,l:30,r:62};
+  const n=an.rounds.length;if(n<2)return null;
+  const maxP=Math.max(...data.teams.map(t=>an.cum[t.id][n-1]));
+  const ymax=Math.ceil(maxP/10)*10;
+  const xp=i=>PAD.l+i/(n-1)*(W-PAD.l-PAD.r);
+  const yp=v=>PAD.t+(1-v/ymax)*(H-PAD.t-PAD.b);
+  const ends=data.teams.map((t,ti)=>({t,ti,y:yp(an.cum[t.id][n-1])})).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<10)ends[i].y=ends[i-1].y+10;
+  const labelY={};ends.forEach(e=>{labelY[e.t.id]=e.y;});
+  const grid=[];for(let v=0;v<=ymax;v+=10)grid.push(v);
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
+      {grid.map(v=>(<g key={v}><line x1={PAD.l} x2={W-PAD.r} y1={yp(v)} y2={yp(v)} stroke="#21262d"/><text x={PAD.l-5} y={yp(v)+3} fontSize={9} fill="#484f58" textAnchor="end">{v}</text></g>))}
+      {data.teams.map((t,ti)=>{
+        const pts=an.cum[t.id].map((v,i)=>`${xp(i)},${yp(v)}`).join(" ");
+        return(<g key={t.id}><polyline points={pts} fill="none" stroke={TEAM_COLORS[ti]} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round"/>
+          <text x={W-PAD.r+6} y={labelY[t.id]+3} fontSize={9} fontWeight={800} fill={TEAM_COLORS[ti]}>{teamName(t)} {an.cum[t.id][n-1]}</text></g>);
+      })}
+      {an.rounds.map((r,i)=>(<text key={r} x={xp(i)} y={H-6} fontSize={9} fill="#8b949e" textAnchor="middle">R{r}</text>))}
+    </svg>
+  );
+}
+
+function RoundHeatmap({data,an,order}){
+  const cw=27,rh=24,lw=76,top=22,W=lw+an.rounds.length*cw+6,H=top+order.length*rh+4;
+  const col=v=>{if(v==null)return"#161b22";const t=Math.max(0,Math.min(8,v))/8;
+    return t>=0.5?`rgba(63,185,80,${0.15+(t-0.5)*1.5})`:`rgba(248,81,73,${0.15+(0.5-t)*1.5})`;};
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
+      {an.rounds.map((r,i)=>(<text key={r} x={lw+i*cw+cw/2} y={14} fontSize={9} fill="#8b949e" textAnchor="middle">R{r}</text>))}
+      {order.map((id,ri)=>{
+        const t=getTeam(data.teams,id);
+        return(<g key={id}>
+          <text x={lw-6} y={top+ri*rh+rh/2+3} fontSize={10} fontWeight={700} fill="#c9d1d9" textAnchor="end">{teamName(t)}</text>
+          {an.rp[id].map((v,i)=>(<g key={i}>
+            <rect x={lw+i*cw+1} y={top+ri*rh+1} width={cw-2} height={rh-2} rx={4} fill={col(v)}/>
+            <text x={lw+i*cw+cw/2} y={top+ri*rh+rh/2+3} fontSize={9} fontWeight={700} fill={v==null?"#484f58":"#e6edf3"} textAnchor="middle">{v==null?"bye":v}</text>
+          </g>))}
+        </g>);
+      })}
+    </svg>
+  );
+}
+
+function MoversChart({data,an,stories}){
+  const order=[...data.teams].sort((a,b)=>(stories[b.id].mid-stories[b.id].final)-(stories[a.id].mid-stories[a.id].final));
+  const lw=80,W=500,rh=30,top=22,x0=lw+10,x1=W-40;
+  const xp=r=>x0+(r-1)/6*(x1-x0);
+  const H=top+order.length*rh+6;
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
+      {[1,2,3,4,5,6,7].map(r=>(<g key={r}><line x1={xp(r)} x2={xp(r)} y1={top-6} y2={H-4} stroke="#21262d"/><text x={xp(r)} y={13} fontSize={9} fill="#8b949e" textAnchor="middle">{r===1?"1st":r===7?"7th":r}</text></g>))}
+      {order.map((t,i)=>{
+        const s=stories[t.id],y=top+i*rh+rh/2,d=s.mid-s.final,c=d>0?"#3fb950":d<0?"#f85149":"#8b949e";
+        return(<g key={t.id}>
+          <text x={lw} y={y+3} fontSize={10} fontWeight={700} fill="#c9d1d9" textAnchor="end">{teamName(t)}</text>
+          <line x1={xp(s.mid)} x2={xp(s.final)} y1={y} y2={y} stroke={c} strokeWidth={3} strokeLinecap="round"/>
+          <circle cx={xp(s.mid)} cy={y} r={5} fill="#161b22" stroke={c} strokeWidth={2}/>
+          <circle cx={xp(s.final)} cy={y} r={5} fill={c}/>
+          <text x={W-6} y={y+3} fontSize={10} fontWeight={800} fill={c} textAnchor="end">{d>0?"▲"+d:d<0?"▼"+(-d):"–"}</text>
+        </g>);
+      })}
+    </svg>
+  );
+}
+
+function CutoffBars({data,ladder}){
+  const max=ladder[0].Pts,W=500,rh=26,lw=80,H=ladder.length*rh+8;
+  return(
+    <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",display:"block"}}>
+      {ladder.map((l,i)=>{
+        const t=getTeam(data.teams,l.id),w=(l.Pts/max)*(W-lw-60),y=i*rh+4;
+        return(<g key={l.id}>
+          <text x={lw-6} y={y+15} fontSize={10} fontWeight={700} fill="#c9d1d9" textAnchor="end">{teamName(t)}</text>
+          <rect x={lw} y={y+3} width={w} height={rh-8} rx={4} fill={i<4?"#238636":"#30363d"}/>
+          <text x={lw+w+6} y={y+15} fontSize={10} fontWeight={800} fill={i<4?"#3fb950":"#8b949e"}>{l.Pts}</text>
+          {i===3&&<line x1={lw-4} x2={W-6} y1={y+rh+1} y2={y+rh+1} stroke="#d4a017" strokeDasharray="4 3"/>}
+        </g>);
+      })}
+    </svg>
+  );
+}
+
+// ── Finals page ─────────────────────────────────────────────────────────────
+function FormChips({form}){
+  return(<span style={{display:"inline-flex",gap:3}}>{(form||[]).map((r,i)=>(<span key={i} style={{width:16,height:16,borderRadius:4,fontSize:9,fontWeight:800,display:"inline-flex",alignItems:"center",justifyContent:"center",background:r==="W"?"#0d3d0d":r==="L"?"#3d1a1a":"#21262d",color:r==="W"?"#3fb950":r==="L"?"#f85149":"#8b949e"}}>{r}</span>))}</span>);
+}
+
+function seasonFacts(data,an,stories,ladder){
+  const f=[];const T=id=>tName(data.teams,id);
+  const climbers=Object.entries(stories).sort((a,b)=>b[1].climb-a[1].climb);
+  if(climbers[0]&&climbers[0][1].climb>=2){const[id,s]=climbers[0];f.push(`🚀 Biggest climb: ${T(+id)} were ${ordinal(s.worst)} after Round ${s.worstRound} and finished ${ordinal(s.final)} – up ${s.climb} places.`);}
+  const fallers=Object.entries(stories).sort((a,b)=>b[1].fall-a[1].fall);
+  if(fallers[0]&&fallers[0][1].fall>=2){const[id,s]=fallers[0];f.push(`📉 Biggest fall: ${T(+id)} were ${ordinal(s.best)} after Round ${s.bestRound} but finished ${ordinal(s.final)}.`);}
+  const leaders=new Set(an.hist.map(l=>l[0].id));
+  f.push(`👑 ${leaders.size} different teams held top spot at some point – ${leaders.size===7?"every team led the ladder!":"it was never settled."}`);
+  const changes=an.hist.filter((l,i)=>i>0&&l[0].id!==an.hist[i-1][0].id).length;
+  f.push(`🔄 The #1 spot changed hands ${changes} times across ${an.rounds.length} rounds.`);
+  if(ladder.length>4){const gap=Math.round((ladder[3].Pts-ladder[4].Pts)*10)/10;f.push(`✂️ The finals cut-off was tight: ${T(ladder[3].id)} edged ${T(ladder[4].id)} for 4th by just ${gap} point${gap===1?"":"s"}.`);}
+  const top=Math.round((ladder[0].Pts-ladder[1].Pts)*10)/10;
+  f.push(`🥇 ${T(ladder[0].id)} took the minor premiership by ${top} point${top===1?"":"s"} over ${T(ladder[1].id)}.`);
+  let bm=null;an.matches.forEach(m=>{const mg=Math.abs(m.ga-m.gb);if(!bm||mg>bm.mg)bm={...m,mg};});
+  if(bm){const w=bm.ga>bm.gb?bm.a:bm.b,l=w===bm.a?bm.b:bm.a;f.push(`💥 Biggest hiding: ${T(w)} beat ${T(l)} ${Math.max(bm.ga,bm.gb)}–${Math.min(bm.ga,bm.gb)} in Round ${bm.round}.`);}
+  let cm=null;an.matches.forEach(m=>{const mg=Math.abs(m.ga-m.gb);if(!cm||mg<cm.mg)cm={...m,mg};});
+  if(cm){const w=cm.ga>cm.gb?cm.a:cm.b,l=w===cm.a?cm.b:cm.a;f.push(`😅 Closest match: ${T(w)} over ${T(l)} by ${cm.mg} game${cm.mg===1?"":"s"} in Round ${cm.round}.`);}
+  const ws=Object.entries(stories).sort((a,b)=>b[1].winStreak-a[1].winStreak)[0];
+  if(ws)f.push(`🔥 Longest winning run: ${T(+ws[0])} with ${ws[1].winStreak} in a row.`);
+  const late=data.teams.map(t=>({id:t.id,g:an.cum[t.id][an.rounds.length-1]-(an.cum[t.id][Math.max(0,an.rounds.length-5)]||0)})).sort((a,b)=>b.g-a.g)[0];
+  if(late)f.push(`⚡ Hottest finish: ${T(late.id)} scored ${late.g} points in the last 4 rounds – more than anyone.`);
+  return f;
+}
+
+function FinalsPage({data,go}){
+  const an=useMemo(()=>calcSeasonAnalytics(data),[data]);
+  const stories=useMemo(()=>calcTeamStories(data,an),[data,an]);
+  const ladder=useMemo(()=>calcLadder(data),[data]);
+  const playerStats=useMemo(()=>calcPlayerStats(data),[data]);
+  const complete=an.rounds.length>=REG_ROUNDS;
+  if(!an.rounds.length)return<div className="page"><div className="card">Finals page unlocks once the regular season is under way.</div></div>;
+  const top4=ladder.slice(0,4);
+  const T=id=>tName(data.teams,id);
+  const fs=getFinalsState(data);
+  const mvpFor=teamId=>{const list=playerStats.filter(p=>p.teamId===teamId&&p.W+p.L>=8);return sortByPerf(list)[0];};
+  const pairs=[[0,1],[0,2],[0,3],[1,2],[1,3],[2,3]].map(([i,j])=>{
+    const a=top4[i].id,b=top4[j].id;
+    const ms=an.matches.filter(m=>(m.a===a&&m.b===b)||(m.a===b&&m.b===a));
+    let pa=0,pb=0,ga=0,gb=0;const chips=[];
+    ms.forEach(m=>{const aa=m.a===a;pa+=aa?m.pa:m.pb;pb+=aa?m.pb:m.pa;ga+=aa?m.ga:m.gb;gb+=aa?m.gb:m.ga;chips.push(`R${m.round}: ${aa?m.pa:m.pb}–${aa?m.pb:m.pa}`);});
+    return{a,b,pa,pb,ga,gb,chips,n:ms.length};
+  });
+  const facts=seasonFacts(data,an,stories,ladder);
+  const order=ladder.map(l=>l.id);
+  const stage=(label,date,left,right,note)=>(
+    <div style={{background:"#161b22",border:"1px solid #30363d",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+      <div style={{fontSize:10,fontWeight:800,color:"#8b949e",textTransform:"uppercase",letterSpacing:"0.06em"}}>{label} · {date}</div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4,fontWeight:800,fontSize:15}}>
+        <span>{left}</span><span style={{color:"#8b949e",fontSize:12}}>v</span><span>{right}</span>
+      </div>
+      {note&&<div style={{fontSize:11,color:"#8b949e",marginTop:3}}>{note}</div>}
+    </div>);
+  return(
+    <div className="page">
+      <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d",textAlign:"center"}}>
+        <div style={{fontSize:30}}>🏆</div>
+        <h2 style={{color:"#3fb950",marginBottom:4}}>Spring 2026 Finals</h2>
+        <div style={{fontSize:12,color:"#8b949e"}}>{complete?"Regular season complete – 14 rounds played":`Regular season in progress – ${an.rounds.length} of ${REG_ROUNDS} rounds`}</div>
+        <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginTop:10}}>
+          {top4.map((l,i)=>(<span key={l.id} className="badge badge-green" style={{fontSize:12}}>{i+1}. {T(l.id)} · {l.Pts}</span>))}
+        </div>
+      </div>
+
+      {fs?(<><FinalsCard data={data}/><FinalsBracket data={data}/></>):(
+        <div className="card">
+          <h3>📅 The Draw</h3>
+          {stage("Qualifying Final","Thu 19 Nov",<>{T(top4[0].id)}<div style={{fontSize:10,color:"#8b949e"}}>1st</div></>,<>{T(top4[1].id)}<div style={{fontSize:10,color:"#8b949e",textAlign:"right"}}>2nd</div></>,"Winner goes straight to the Grand Final")}
+          {stage("Elimination Final","Thu 19 Nov",<>{T(top4[2].id)}<div style={{fontSize:10,color:"#8b949e"}}>3rd</div></>,<>{T(top4[3].id)}<div style={{fontSize:10,color:"#8b949e",textAlign:"right"}}>4th</div></>,"Loser is out")}
+          {stage("Preliminary Final","Thu 26 Nov","Loser of Qualifying","Winner of Elimination","")}
+          {stage("Grand Final","Thu 3 Dec","Winner of Qualifying","Winner of Preliminary","")}
+        </div>
+      )}
+
+      <div className="card">
+        <h3>Meet the Finalists</h3>
+        {top4.map((l,i)=>{
+          const s=stories[l.id],t=getTeam(data.teams,l.id),star=mvpFor(l.id);
+          const gp=l.GF/(l.GF+l.GA);
+          return(
+            <div key={l.id} style={{padding:"10px 0",borderTop:i?"1px solid var(--gray-border)":"none"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div><div style={{fontWeight:900,fontSize:16}}>{["🥇","🥈","🥉","4️⃣"][i]} {teamName(t)}</div><div style={{fontSize:11,color:"#8b949e"}}>{t.name} · {t.players.join(", ")}</div></div>
+                <div style={{textAlign:"right"}}><div style={{fontWeight:900,fontSize:18,color:"#3fb950"}}>{l.Pts}</div><div style={{fontSize:10,color:"#8b949e"}}>points</div></div>
+              </div>
+              <div style={{display:"flex",gap:14,marginTop:6,alignItems:"center",flexWrap:"wrap"}}>
+                <FormChips form={s.form}/>
+                <span style={{fontSize:11,color:"#8b949e"}}>Game win {pct0(gp)}</span>
+                <span style={{fontSize:11,color:"#8b949e"}}>{l.W}W {l.D}D {l.L}L</span>
+              </div>
+              <div style={{fontSize:12,marginTop:5,color:"#c9d1d9"}}>{storyLine(s)}{star?` Star: ${star.name} (${fmtPct(swPct(star.W,star.L))}).`:""}</div>
+            </div>);
+        })}
+      </div>
+
+      <div className="card" style={{padding:12}}>
+        <h3>The Race – Ladder Position by Round</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>Every team's ladder position after each round.</div>
+        <LadderChart data={data} includeFinals={false}/>
+      </div>
+
+      <div className="card" style={{padding:12}}>
+        <h3>Points Race</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>Cumulative premiership points – watch the pack bunch up late.</div>
+        <PointsRaceChart data={data} an={an}/>
+      </div>
+
+      <div className="card" style={{padding:12}}>
+        <h3>The Comeback Chart</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>Ladder position at the halfway mark (hollow) vs the end of the regular season (solid).</div>
+        <MoversChart data={data} an={an} stories={stories}/>
+      </div>
+
+      <div className="card" style={{padding:12}}>
+        <h3>Round-by-Round Heat Map</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>Points scored each round (out of 8). Green = big night, red = tough one.</div>
+        <RoundHeatmap data={data} an={an} order={order}/>
+      </div>
+
+      <div className="card" style={{padding:12}}>
+        <h3>The Cut-Off</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>Final regular-season points. Dashed line = finals cut.</div>
+        <CutoffBars data={data} ladder={ladder}/>
+      </div>
+
+      <div className="card">
+        <h3>Finalist Head-to-Head</h3>
+        <div style={{fontSize:11,color:"#8b949e",marginBottom:6}}>How the top four fared against each other this season (premiership points).</div>
+        {pairs.map((p,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:i?"1px solid var(--gray-border)":"none"}}>
+            <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13}}>{T(p.a)} <span style={{color:"#8b949e",fontWeight:600}}>v</span> {T(p.b)}</div><div style={{fontSize:10,color:"#8b949e"}}>{p.chips.join(" · ")||"did not meet"}</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:900,fontSize:14,color:p.pa>p.pb?"#3fb950":p.pa<p.pb?"#f85149":"#c9d1d9"}}>{p.pa}–{p.pb}</div><div style={{fontSize:10,color:"#8b949e"}}>games {p.ga}–{p.gb}</div></div>
+          </div>))}
+      </div>
+
+      <div className="card">
+        <h3>Season Storylines</h3>
+        {facts.map((f,i)=>(<div key={i} style={{fontSize:13,padding:"7px 0",borderTop:i?"1px solid var(--gray-border)":"none",color:"#c9d1d9"}}>{f}</div>))}
+      </div>
+
+      <div style={{textAlign:"center",marginBottom:16}}><button className="btn btn-secondary btn-sm" onClick={()=>go("stats")}>📊 See the full Season Summary →</button></div>
+    </div>
+  );
+}
+
+// Compact finals card for the home page
+function FinalsHomeCard({data,go}){
+  const an=useMemo(()=>calcSeasonAnalytics(data),[data]);
+  const stories=useMemo(()=>calcTeamStories(data,an),[data,an]);
+  const ladder=useMemo(()=>calcLadder(data),[data]);
+  if(an.rounds.length<REG_ROUNDS)return null;
+  const fs=getFinalsState(data);
+  const top4=ladder.slice(0,4),T=id=>tName(data.teams,id);
+  const row=(label,a,b,sa,sb)=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",borderTop:"1px solid #2d5a2d"}}>
+      <div style={{fontSize:10,fontWeight:800,color:"#8b949e",textTransform:"uppercase",width:92}}>{label}</div>
+      <div style={{flex:1,fontWeight:800,fontSize:13}}>{a} <span style={{color:"#8b949e",fontWeight:600}}>v</span> {b}</div>
+    </div>);
+  const climber=Object.entries(stories).sort((x,y)=>y[1].climb-x[1].climb)[0];
+  return(
+    <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <h3 style={{color:"#3fb950",margin:0}}>🏆 Finals Series</h3>
+        <button className="btn btn-primary btn-sm" onClick={()=>go("finals")}>Finals page →</button>
+      </div>
+      {!fs&&(<>
+        <div style={{fontSize:12,color:"#8b949e",marginBottom:4}}>Regular season complete. Finals start Thu 19 Nov.</div>
+        {row("Qualifying",T(top4[0].id)+" (1st)",T(top4[1].id)+" (2nd)")}
+        {row("Elimination",T(top4[2].id)+" (3rd)",T(top4[3].id)+" (4th)")}
+        {row("Prelim · 26 Nov","Loser Qualifying","Winner Elim")}
+        {row("Grand Final · 3 Dec","Winner Qualifying","Winner Prelim")}
+        {climber&&climber[1].climb>=3&&<div style={{fontSize:11,color:"#c9d1d9",marginTop:6,paddingTop:6,borderTop:"1px solid #2d5a2d"}}>🚀 {T(+climber[0])} were {ordinal(climber[1].worst)} after Round {climber[1].worstRound} – now {ordinal(climber[1].final)}.</div>}
+      </>)}
+      {fs&&<div style={{fontSize:12,color:"#8b949e"}}>Finals are under way – latest results below. Tap "Finals page" for charts and storylines.</div>}
+    </div>
+  );
+}
+
+// ── Season summary (stats page) ─────────────────────────────────────────────
+function calcSeasonAwards(data){
+  const teams=data.teams;
+  const results=regResults(data).slice().sort((a,b)=>a.round-b.round);
+  const P={};
+  const ens=n=>{if(!P[n])P[n]={name:n,W:0,L:0,gF:0,gA:0,seq:[],rounds:new Set(),teamIds:new Set(),subW:0,subL:0,tightW:0,bagels:0,
+    pos:{1:[0,0],2:[0,0],3:[0,0],4:[0,0]},rg:{}};return P[n];};
+  const roster=new Set();teams.forEach(t=>t.players.forEach(p=>roster.add(p)));
+  const mvp={};let totalSets=0,totalGames=0,totalMatches=0;
+  results.forEach(rnd=>{
+    const rg={};
+    rnd.matches.forEach(m=>{
+      totalMatches++;
+      m.sets.forEach((s,si)=>{
+        if(s.wo)return;
+        const idxs=COMBO_MAP[s.c||["1+2","3+4","1+3","2+4","1+4","2+3"][si]];if(!idxs)return;
+        const g1=Number(s.g1)||0,g2=Number(s.g2)||0;totalSets++;totalGames+=g1+g2;
+        [[m.roster1,m.team1,g1,g2],[m.roster2,m.team2,g2,g1]].forEach(([ro,tid,gm,go])=>{
+          idxs.forEach(ix=>{
+            const name=ro[ix];if(!name)return;const p=ens(name);
+            const w=gm>go?1:0,l=go>gm?1:0;
+            p.rounds.add(rnd.round);p.teamIds.add(tid);
+            p.W+=w;p.L+=l;p.gF+=gm;p.gA+=go;
+            if(w)p.seq.push("W");else if(l)p.seq.push("L");
+            if(isSub(teams,name,tid)){p.subW+=w;p.subL+=l;}
+            if(w&&gm-go===1)p.tightW++;
+            if(w&&go===0)p.bagels++;
+            if(ix+1>=1&&ix+1<=4){p.pos[ix+1][0]+=w;p.pos[ix+1][1]+=l;}
+            const r=(p.rg[rnd.round]=p.rg[rnd.round]||{W:0,L:0,g:0});r.W+=w;r.L+=l;r.g+=gm;
+            rg[name]=(rg[name]||0)+gm;
+          });
+        });
+      });
+    });
+    const best=Math.max(0,...Object.entries(rg).filter(([n])=>!MVP_EXCLUDE_NAMES.includes(n)).map(([,g])=>g));
+    Object.entries(rg).forEach(([n,g])=>{if(g===best&&best>0&&!MVP_EXCLUDE_NAMES.includes(n))mvp[n]=(mvp[n]||0)+1;});
+  });
+  const list=Object.values(P);
+  list.forEach(p=>{
+    let run=0,mx=0;p.seq.forEach(x=>{if(x==="W"){run++;mx=Math.max(mx,run);}else run=0;});p.streak=mx;
+    p.perfect=Object.values(p.rg).filter(r=>r.L===0&&r.W>=3).length;
+    const bestR=Object.entries(p.rg).sort((a,b)=>b[1].g-a[1].g)[0];p.bestRoundG=bestR?bestR[1].g:0;p.bestRoundN=bestR?Number(bestR[0]):0;
+    p.sets=p.W+p.L;p.teamsN=p.teamIds.size;p.mvps=mvp[p.name]||0;p.nRounds=p.rounds.size;
+    const own=teams.find(t=>t.players.includes(p.name));p.team=own?teamName(own):"Casual sub";
+  });
+  const mk=(icon,title,note,arr,val,sub,n=3)=>({icon,title,note,rows:arr.slice(0,n).map(p=>({name:p.name,sub:sub?sub(p):p.team,val:val(p)}))});
+  const q=(min)=>list.filter(p=>p.sets>=min);
+  const byWin=arr=>[...arr].sort((a,b)=>(b.W/b.sets-a.W/a.sets)||(b.gF/(b.gF+b.gA)-a.gF/(a.gF+a.gA)));
+  const player=[
+    mk("🎯","Set Win % King","min 20 sets",byWin(q(20)),p=>pct0(p.W/p.sets),p=>`${p.W}W ${p.L}L · ${p.team}`),
+    mk("💪","Most Sets Won","",[...list].sort((a,b)=>b.W-a.W),p=>p.W,p=>`of ${p.sets} played · ${p.team}`),
+    mk("🎾","Most Games Won","",[...list].sort((a,b)=>b.gF-a.gF),p=>p.gF,p=>`${p.nRounds} rounds · ${p.team}`),
+    mk("📈","Game Win % Leader","min 20 sets",[...q(20)].sort((a,b)=>b.gF/(b.gF+b.gA)-a.gF/(a.gF+a.gA)),p=>pct0(p.gF/(p.gF+p.gA)),p=>`${p.gF}–${p.gA} games · ${p.team}`),
+    mk("🔥","Longest Set Winning Streak","consecutive sets won",[...list].sort((a,b)=>b.streak-a.streak),p=>p.streak,null),
+    mk("⭐","Most Round MVPs","most games in a round",[...list].filter(p=>p.mvps>0).sort((a,b)=>b.mvps-a.mvps||b.gF-a.gF),p=>p.mvps,null),
+    mk("💥","Biggest Single Night","most games won in one round",[...list].sort((a,b)=>b.bestRoundG-a.bestRoundG),p=>p.bestRoundG,p=>`Round ${p.bestRoundN} · ${p.team}`),
+    mk("🧱","Perfect Nights","rounds winning every set (3+ sets)",[...list].filter(p=>p.perfect>0).sort((a,b)=>b.perfect-a.perfect||b.W-a.W),p=>p.perfect,null),
+    mk("🍩","Bagel Dealer","sets won 6–0",[...list].filter(p=>p.bagels>0).sort((a,b)=>b.bagels-a.bagels),p=>p.bagels,null),
+    mk("😅","Nail-Biter Specialist","sets won by a single game",[...list].filter(p=>p.tightW>0).sort((a,b)=>b.tightW-a.tightW),p=>p.tightW,null),
+    mk("🛡️","Iron Man","most rounds played",[...list].sort((a,b)=>b.nRounds-a.nRounds||b.sets-a.sets),p=>p.nRounds,p=>`${p.sets} sets · ${p.team}`),
+    mk("🧳","Most Travelled","played for the most teams",[...list].filter(p=>p.teamsN>1).sort((a,b)=>b.teamsN-a.teamsN||b.sets-a.sets),p=>p.teamsN+" teams",null),
+    mk("🦸","Super Sub","best win % as a sub (min 4 sets)",[...list].filter(p=>p.subW+p.subL>=4).sort((a,b)=>b.subW/(b.subW+b.subL)-a.subW/(a.subW+a.subL)),p=>pct0(p.subW/(p.subW+p.subL)),p=>`${p.subW}W ${p.subL}L as sub`),
+    mk("🚑","Mr Reliable Sub","most sets played as a sub",[...list].filter(p=>p.subW+p.subL>0).sort((a,b)=>(b.subW+b.subL)-(a.subW+a.subL)),p=>p.subW+p.subL+" sets",p=>`${p.subW}W ${p.subL}L`),
+  ];
+  [1,2,3,4].forEach(pos=>{
+    const arr=list.filter(p=>p.pos[pos][0]+p.pos[pos][1]>=10).sort((a,b)=>b.pos[pos][0]/(b.pos[pos][0]+b.pos[pos][1])-a.pos[pos][0]/(a.pos[pos][0]+a.pos[pos][1]));
+    player.push(mk(["","🥇","🥈","🥉","🏅"][pos],`Best #${pos} Player`,"min 10 sets in position",arr,p=>pct0(p.pos[pos][0]/(p.pos[pos][0]+p.pos[pos][1])),p=>`${p.pos[pos][0]}W ${p.pos[pos][1]}L`));
+  });
+  // partnerships
+  const pairs=calcPartnerStats(data).map(p=>({...p,sets:p.W+p.L}));
+  const pName=p=>p.pair.replace(" & "," & ");
+  const pairCats=[
+    {icon:"🤝",title:"Best Partnership",note:"min 8 sets together",rows:[...pairs].filter(p=>p.sets>=8).sort((a,b)=>b.W/b.sets-a.W/a.sets||b.sets-a.sets).slice(0,3).map(p=>({name:pName(p),sub:`${p.W}W ${p.L}L`,val:pct0(p.W/p.sets)}))},
+    {icon:"👫",title:"Inseparable Pair",note:"most sets played together",rows:[...pairs].sort((a,b)=>b.sets-a.sets).slice(0,3).map(p=>({name:pName(p),sub:`${p.W}W ${p.L}L`,val:p.sets+" sets"}))},
+  ];
+  // teams
+  const an=calcSeasonAnalytics(data);const T=id=>tName(teams,id);
+  const stories=calcTeamStories(data,an);
+  const ladder=calcLadder(data);
+  const tm=teams.map(t=>({id:t.id,ml:teamMatchList(an,t.id)}));
+  const bigWin=[...an.matches].map(m=>({...m,mg:Math.abs(m.ga-m.gb),w:m.ga>m.gb?m.a:m.b,l:m.ga>m.gb?m.b:m.a})).sort((a,b)=>b.mg-a.mg);
+  const teamCats=[
+    {icon:"🏆",title:"Minor Premiers",note:"",rows:ladder.slice(0,3).map(l=>({name:T(l.id),sub:`${l.W}W ${l.D}D ${l.L}L`,val:l.Pts+" pts"}))},
+    {icon:"📈",title:"Best Game Win %",note:"",rows:[...ladder].sort((a,b)=>b.GF/(b.GF+b.GA)-a.GF/(a.GF+a.GA)).slice(0,3).map(l=>({name:T(l.id),sub:`${l.GF}–${l.GA} games`,val:pct0(l.GF/(l.GF+l.GA))}))},
+    {icon:"🔥",title:"Longest Winning Run",note:"matches in a row",rows:Object.entries(stories).sort((a,b)=>b[1].winStreak-a[1].winStreak).slice(0,3).map(([id,s])=>({name:T(+id),sub:"",val:s.winStreak}))},
+    {icon:"💥",title:"Biggest Wins",note:"by games margin",rows:bigWin.slice(0,3).map(m=>({name:`${T(m.w)} d ${T(m.l)}`,sub:`Round ${m.round}`,val:`${Math.max(m.ga,m.gb)}–${Math.min(m.ga,m.gb)}`}))},
+    {icon:"😅",title:"Nail-Biters",note:"closest matches",rows:[...bigWin].reverse().slice(0,3).map(m=>({name:`${T(m.w)} d ${T(m.l)}`,sub:`Round ${m.round}`,val:`${Math.max(m.ga,m.gb)}–${Math.min(m.ga,m.gb)}`}))},
+    {icon:"🚀",title:"Biggest Climb",note:"worst position to final position",rows:Object.entries(stories).sort((a,b)=>b[1].climb-a[1].climb).slice(0,3).map(([id,s])=>({name:T(+id),sub:`${ordinal(s.worst)} after R${s.worstRound}`,val:"→ "+ordinal(s.final)}))},
+    {icon:"👑",title:"Rounds on Top",note:"rounds spent in 1st",rows:Object.entries(stories).sort((a,b)=>b[1].roundsAtTop-a[1].roundsAtTop).slice(0,3).map(([id,s])=>({name:T(+id),sub:"",val:s.roundsAtTop}))},
+  ];
+  const numbers={rounds:results.length,matches:totalMatches,sets:totalSets,games:totalGames,players:list.length,casuals:list.filter(p=>!roster.has(p.name)).length,bagels:list.reduce((a,p)=>a+p.bagels,0)};
+  return{player,pairCats,teamCats,numbers};
+}
+
+function AwardCard({c}){
+  if(!c.rows.length)return null;
+  return(
+    <div className="card" style={{padding:12,marginBottom:10}}>
+      <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:6}}>
+        <span style={{fontSize:20}}>{c.icon}</span><span style={{fontWeight:900,fontSize:14}}>{c.title}</span>
+        {c.note&&<span style={{fontSize:10,color:"#8b949e"}}>{c.note}</span>}
+      </div>
+      {c.rows.map((r,i)=>(
+        <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderTop:i?"1px solid var(--gray-border)":"none"}}>
+          <span style={{width:22,textAlign:"center",fontSize:i===0?16:12,fontWeight:800,color:"#8b949e"}}>{i===0?"🥇":i===1?"🥈":"🥉"}</span>
+          <div style={{flex:1,minWidth:0}}><div style={{fontWeight:i===0?900:700,fontSize:i===0?14:13}}>{r.name}</div>{r.sub&&<div style={{fontSize:10,color:"#8b949e"}}>{r.sub}</div>}</div>
+          <div style={{fontWeight:900,fontSize:i===0?16:13,color:i===0?"#3fb950":"#c9d1d9"}}>{r.val}</div>
+        </div>))}
+    </div>);
+}
+
+function SeasonSummary({data}){
+  const aw=useMemo(()=>calcSeasonAwards(data),[data]);
+  const n=aw.numbers;
+  const box=(v,l)=>(<div className="stat-highlight"><div className="val">{v}</div><div className="lbl">{l}</div></div>);
+  const sec=t=>(<h2 style={{margin:"14px 0 8px"}}>{t}</h2>);
+  return(
+    <div>
+      <div className="card" style={{background:"#0d2a0d",border:"1px solid #2d5a2d"}}>
+        <h2 style={{color:"#3fb950",marginBottom:4}}>🏅 Season Summary</h2>
+        <div style={{fontSize:12,color:"#8b949e"}}>🔒 Regular season locked – {n.rounds} rounds. Finals results don't count towards these stats.</div>
+      </div>
+      <div className="grid-3" style={{marginBottom:12}}>
+        {box(n.matches,"Matches")}{box(n.sets,"Sets")}{box(n.games,"Games")}
+        {box(n.players,"Players Used")}{box(n.casuals,"Casual Subs")}{box(n.bagels,"Bagels 🍩")}
+      </div>
+      {sec("Player Awards")}
+      {aw.player.map((c,i)=><AwardCard key={i} c={c}/>)}
+      {sec("Partnerships")}
+      {aw.pairCats.map((c,i)=><AwardCard key={i} c={c}/>)}
+      {sec("Team Awards")}
+      {aw.teamCats.map((c,i)=><AwardCard key={i} c={c}/>)}
+    </div>
+  );
+}
+
 function App(){
   const[data,setData]=useState(()=>JSON.parse(JSON.stringify(SEED)));const[loading,setLoading]=useState(true);useEffect(()=>{let alive=true;loadData().then(d=>{if(alive){setData(d);setLoading(false);}});return()=>{alive=false;};},[]);
   const[page,setPage]=useState("home");
@@ -2161,7 +2626,8 @@ function App(){
   return(
     <div>
       <Header page={page} setPage={setPage}/>
-      {page==="home"&&<HomePage data={data}/>}
+      {page==="home"&&<HomePage data={data} go={setPage}/>}
+      {page==="finals"&&<FinalsPage data={data} go={setPage}/>}
       {page==="results"&&<ResultsPage data={data} navRound={navRound} clearNavRound={()=>setNavRound(null)}/>}
       {page==="stats"&&<StatsPage data={data}/>}
       {page==="teams"&&<TeamsPage data={data}/>}
