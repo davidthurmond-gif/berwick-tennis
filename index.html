@@ -132,6 +132,7 @@ function tName(teams,id){return teamName(getTeam(teams,id));}
 function TL({team,align}){if(!team)return null;return(<span style={{display:"inline-flex",flexDirection:"column",alignItems:align==="right"?"flex-end":align==="center"?"center":"flex-start",lineHeight:1.15}}><span>{teamName(team)}</span><span style={{fontSize:10,fontWeight:600,color:"var(--gray)"}}>{team.name}</span></span>);}
 function fmtDate(iso){if(!iso)return"";const d=new Date(iso+"T00:00:00");return d.toLocaleDateString("en-AU",{weekday:"short",day:"numeric",month:"short"});}
       function isSub(teams,player,teamId){return!!player&&!getTeam(teams,teamId).players.includes(player);}
+function wScore(m,w){return m.total1!=null?(w===m.team1?` ${m.total1}–${m.total2}`:` ${m.total2}–${m.total1}`):"";}
 function getFinalsState(data){
   const f=data.finals; if(!f)return null;
   const{qualifying:q,elimination:e,prelim:p,grandFinal:g}=f;
@@ -937,18 +938,18 @@ function FinalsCard({data}){
       <h3 style={{color:"#3fb950",marginBottom:8}}>🏆 Finals Series</h3>
       <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
         <div style={{fontWeight:800,fontSize:13}}>Qualifying Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(q.date)}</span></div>
-        <div style={{fontSize:13,marginTop:2}}>{tName(teams,q.team1)} def {tName(teams,q.team2)}{q.total1!=null?` ${q.total1}–${q.total2}`:""}</div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,qWinner)} def {tName(teams,qLoser)}{wScore(q,qWinner)}</div>
         <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,qWinner)} go straight through to the Grand Final · {tName(teams,qLoser)} drop to the Preliminary Final</div>
       </div>
       <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
         <div style={{fontWeight:800,fontSize:13}}>Elimination Final <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(e.date)}</span></div>
-        <div style={{fontSize:13,marginTop:2}}>{tName(teams,eWinner)} def {tName(teams,eLoser)}{e.total1!=null?` ${e.total1}–${e.total2}`:""}</div>
+        <div style={{fontSize:13,marginTop:2}}>{tName(teams,eWinner)} def {tName(teams,eLoser)}{wScore(e,eWinner)}</div>
         <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,eWinner)} advance to the Preliminary Final · {tName(teams,eLoser)} are eliminated</div>
       </div>
       <div style={{marginBottom:10,paddingBottom:10,borderBottom:"1px solid #2d5a2d"}}>
         <div style={{fontWeight:800,fontSize:13}}>{prelimLabel} <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(prelim.date)}</span></div>
         {prelim.played?(<>
-          <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.winner)} def {tName(teams,prelim.loser)}{prelim.total1!=null?` ${prelim.total1}–${prelim.total2}`:""}</div>
+          <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.winner)} def {tName(teams,prelim.loser)}{wScore(prelim,prelim.winner)}</div>
           <div style={{fontSize:11,color:"#8b949e",marginTop:2}}>{tName(teams,prelim.winner)} advance to the Grand Final · {tName(teams,prelim.loser)} are eliminated</div>
         </>):(
           <div style={{fontSize:13,marginTop:2}}>{tName(teams,prelim.team1)} vs {tName(teams,prelim.team2)}</div>
@@ -957,7 +958,7 @@ function FinalsCard({data}){
       <div>
         <div style={{fontWeight:800,fontSize:13}}>{gfLabel} <span style={{color:"#8b949e",fontWeight:600,fontSize:11}}>· {fmtDate(grandFinal.date)}</span></div>
         {grandFinal.played?(<>
-          <div style={{fontSize:13,marginTop:2}}>🏆 {tName(teams,grandFinal.champion)} def {tName(teams,grandFinal.runnerUp)}{grandFinal.total1!=null?` ${grandFinal.total1}–${grandFinal.total2}`:""}</div>
+          <div style={{fontSize:13,marginTop:2}}>🏆 {tName(teams,grandFinal.champion)} def {tName(teams,grandFinal.runnerUp)}{wScore(grandFinal,grandFinal.champion)}</div>
           <div style={{fontSize:11,color:"#3fb950",fontWeight:700,marginTop:2}}>{tName(teams,grandFinal.champion)} are the 2026 Autumn Premiers!</div>
         </>):grandFinal.team2!=null?(
           <div style={{fontSize:13,marginTop:2}}>{tName(teams,grandFinal.team1)} vs {tName(teams,grandFinal.team2)}</div>
@@ -1519,10 +1520,10 @@ function FixturesPage({data,navigate,ladder=[]}){
           const n=i=>top4[i]?teamName(getTeam(data.teams,top4[i].id)):`${["1st","2nd","3rd","4th"][i]}`;
           const fs=getFinalsState(data);
           const finals=fs?[
-            {label:"Qualifying Final",date:fmtDate(fs.q.date),detail:`${tName(data.teams,fs.q.team1)} def ${tName(data.teams,fs.q.team2)}${fs.q.total1!=null?` ${fs.q.total1}–${fs.q.total2}`:""} — ${tName(data.teams,fs.qWinner)} through to Grand Final`},
-            {label:"Elimination Final",date:fmtDate(fs.e.date),detail:`${tName(data.teams,fs.eWinner)} def ${tName(data.teams,fs.eLoser)}${fs.e.total1!=null?` ${fs.e.total1}–${fs.e.total2}`:""} — through to Preliminary Final`},
-            {label:"Preliminary Final",date:fmtDate(fs.prelim.date),detail:fs.prelim.played?`${tName(data.teams,fs.prelim.winner)} def ${tName(data.teams,fs.prelim.loser)}${fs.prelim.total1!=null?` ${fs.prelim.total1}–${fs.prelim.total2}`:""} — through to Grand Final`:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
-            {label:"Grand Final",date:fmtDate(fs.grandFinal.date),detail:fs.grandFinal.played?`🏆 ${tName(data.teams,fs.grandFinal.champion)} def ${tName(data.teams,fs.grandFinal.runnerUp)}${fs.grandFinal.total1!=null?` ${fs.grandFinal.total1}–${fs.grandFinal.total2}`:""} — Premiers!`:fs.grandFinal.team2!=null?`${tName(data.teams,fs.grandFinal.team1)} v ${tName(data.teams,fs.grandFinal.team2)}`:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
+            {label:"Qualifying Final",date:fmtDate(fs.q.date),detail:`${tName(data.teams,fs.qWinner)} def ${tName(data.teams,fs.qLoser)}${wScore(fs.q,fs.qWinner)} — ${tName(data.teams,fs.qWinner)} through to Grand Final`},
+            {label:"Elimination Final",date:fmtDate(fs.e.date),detail:`${tName(data.teams,fs.eWinner)} def ${tName(data.teams,fs.eLoser)}${wScore(fs.e,fs.eWinner)} — through to Preliminary Final`},
+            {label:"Preliminary Final",date:fmtDate(fs.prelim.date),detail:fs.prelim.played?`${tName(data.teams,fs.prelim.winner)} def ${tName(data.teams,fs.prelim.loser)}${wScore(fs.prelim,fs.prelim.winner)} — through to Grand Final`:`${tName(data.teams,fs.prelim.team1)} v ${tName(data.teams,fs.prelim.team2)}`},
+            {label:"Grand Final",date:fmtDate(fs.grandFinal.date),detail:fs.grandFinal.played?`🏆 ${tName(data.teams,fs.grandFinal.champion)} def ${tName(data.teams,fs.grandFinal.runnerUp)}${wScore(fs.grandFinal,fs.grandFinal.champion)} — Premiers!`:fs.grandFinal.team2!=null?`${tName(data.teams,fs.grandFinal.team1)} v ${tName(data.teams,fs.grandFinal.team2)}`:`${tName(data.teams,fs.grandFinal.team1)} v Winner Prelim`},
           ]:[
             {label:"Elimination & Qualifying",date:"19 Nov 2026",detail:`${n(2)} v ${n(3)}  •  ${n(0)} v ${n(1)}`},
             {label:"Preliminary Final",date:"26 Nov 2026",detail:`Loser ${n(0)}/${n(1)} v Winner ${n(2)}/${n(3)}`},
